@@ -141,7 +141,7 @@ Status effects are visible on your profile and add personality:
 ## Session Details
 
 ### Session Types
-- **Rally** (friends/known connections) — invite-only, visible to invitees. "Rally at Movement 6pm."
+- **Raid** (friends/known connections) — invite-only, visible to invitees. "Raid at Movement 6pm."
 - **Quest Board** (discovery) — posted to the Quest Board, visible to anyone with the gym favorited. Strangers join your party.
 
 ### Session Lifecycle
@@ -158,11 +158,14 @@ Status effects are visible on your profile and add personality:
 - This applies to both party sessions and open sessions
 
 ### Cancellation & No-Shows
-- Anyone can cancel their attendance at any time
-- **No-shows receive a random negative status effect** — RPG-flavored debuffs like "Poisoned," "Cursed," "Hexed," "Frozen," etc.
+- Anyone can cancel their attendance at any time (no penalty for canceling in advance)
+- No-show penalties **only apply to sessions you accepted** (not invitations you ignored)
+- **Honor system with a grace period:** after a session's scheduled time passes, if you haven't checked in (logged a send or tapped "I was here"), you get a push notification: "Oh no! You're about to be cursed. Did you make it to [gym]?" with [I was there] / [I couldn't make it]
+- If you confirm you weren't there (or don't respond): **random negative status effect** — "Poisoned," "Cursed," "Hexed," "Frozen," "Haunted," etc.
 - Status effects are **publicly visible** on your profile, making them a funny social consequence
-- Effects fade over time with consistent attendance
+- Effects fade over time with consistent attendance at future sessions
 - The humor takes the sting out while still creating accountability — especially important for Quest Board sessions where strangers committed based on your attendance
+- **No-show penalties only apply to Quests (open sessions), not Raids (friend sessions)** — your friends can give you grief themselves
 
 ### Session Rules
 - Anyone in the session can invite additional people
@@ -187,7 +190,7 @@ Status effects are visible on your profile and add personality:
 
 ### Third View: Party (Connections & Guilds)
 - Your connection list (generated names + any nicknames you've set)
-- **Guilds** — saved named groups for quick Rally invites ("Tuesday Crew," "Weekend Warriors")
+- **Guilds** — saved named groups for quick Raid invites ("Tuesday Crew," "Weekend Warriors")
 - After a session, you can add new connections directly to a guild from the post-session prompt
 - Manage connections (easy removal — no notification sent to the other person)
 
@@ -199,7 +202,7 @@ Status effects are visible on your profile and add personality:
 - Settings, favorite gyms, edit profile
 
 ### Session Creation
-- Prominent, fluid action to create a new Rally or post to the Quest Board
+- Prominent, fluid action to create a new Raid or post to the Quest Board
 - Quick flow: gym → time → invite (individuals or guild) or post as quest
 
 ---
@@ -247,10 +250,38 @@ Status effects are visible on your profile and add personality:
 - The anonymity should feel exciting and fun, not shady
 - RPG language where it fits naturally (party, quest, XP, level up)
 
+### The Wizard (Mascot / Guide)
+- A pixel-art wizard character who appears at key moments — **not** persistent like Clippy
+- Provides contextual guidance and flavor text during onboarding and first-time interactions
+- Tone: helpful, slightly irreverent, in-character as a fantasy wizard who's really into climbing
+- Example moments:
+  - First Raid: "A raid! Assemble your party and pick a dungeon — er, gym."
+  - First Quest join: "A stranger approaches! They'll see your check-in message when they arrive."
+  - First curse: "The spirits have cursed you for abandoning your quest. Show up next time to lift the curse."
+  - First grade breakthrough: "By the ancient chalk... you've ascended! A blessing upon you."
+  - No-show warning: "Oh no! Dark magic stirs... did you make it to your quest?"
+- Name TBD — should feel like a climbing-world wizard, not generic fantasy
+
 ### Name Generation Vocabulary
 Draw from climbing + nature + slightly absurd:
 - Adjectives: Crimson, Chalk, Granite, Mossy, Feral, Rusty, Alpine, Dusty, Solar, Midnight
 - Nouns: Gecko, Phantom, Otter, Wizard, Falcon, Badger, Lynx, Sphinx, Yeti, Mantis
+
+---
+
+## Platform & Web
+
+### React Native + React Native Web
+- Primary platform: **iOS and Android** via React Native
+- Web version via **React Native Web** — same codebase, adapted navigation
+- The web version is a full experience, not just a marketing site
+
+### Web-Specific Considerations
+- **Session landing pages** (universal links) are web-first — viewable by anyone, no app required
+- Web navigation differs from mobile: likely a sidebar or top nav instead of bottom tabs
+- Homepage on web will have additional content (marketing, app store links, feature overview)
+- Core app functionality (Quests, Quest Board, Party, Character) available on web
+- Mobile app is the primary experience; web is secondary but functional
 
 ---
 
@@ -285,7 +316,7 @@ What climbers actually use today: texting friends, Facebook groups, walking up t
 6. **Session check-in message** — Is this a single message field, or a mini-chat within the session? Single message is simpler and less likely to become a messaging app.
 7. **Status effect duration** — How long do blessings last? How many sessions to clear a debuff? Needs tuning.
 8. **XP formula specifics** — Exact XP values per grade delta. How many levels? What do levels unlock (if anything)?
-9. **No-show detection** — How do we know someone no-showed vs. just didn't check in? Does someone have to report it, or is it automatic (e.g., session ended and you never logged a send or tapped "I was there")?
-10. **Session web page scope** — How much of the app experience is on the web? Just the invite landing page? Or can you view the Quest Board on web too?
+9. **Wizard name and personality** — The wizard mascot needs a name. Should feel like a climbing-world wizard. Personality details TBD.
+10. **Name reroll limits** — During onboarding, can you reroll your generated name? How many times? Unlimited feels wrong (people will hunt for "cool" names), but zero feels rigid.
 11. **Widget / ambient awareness** — Future feature. Home screen widget showing "friends climbing today."
 12. **Outdoor climbing support** — Explicitly out of scope for v1. Revisit based on community demand.

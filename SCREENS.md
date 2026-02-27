@@ -18,12 +18,12 @@ The first thing you see. Your climbing schedule.
 
 ```
 ┌─────────────────────────────────┐
-│  BELAY QUEST            [+] ←── New Rally / Quest
+│  BELAY QUEST            [+] ←── New Raid / Quest
 │─────────────────────────────────│
 │                                 │
 │  TODAY                          │
 │  ┌─────────────────────────────┐│
-│  │ ⚔ Rally at Movement        ││
+│  │ ⚔ Raid at Movement        ││
 │  │   6:00 PM                   ││
 │  │   🧑‍🤝‍🧑 You, Chalk Phantom,  ││
 │  │      Boulder Otter (+2)     ││
@@ -32,7 +32,7 @@ The first thing you see. Your climbing schedule.
 │                                 │
 │  TOMORROW                       │
 │  ┌─────────────────────────────┐│
-│  │ ⚔ Rally at Summit           ││
+│  │ ⚔ Raid at Summit           ││
 │  │   5:30 PM                   ││
 │  │   🧑‍🤝‍🧑 Slab Wizard           ││
 │  │   [Accept]  [Decline]       ││
@@ -64,7 +64,7 @@ The first thing you see. Your climbing schedule.
 │      ⛰  Time to rally the      │
 │          party?                 │
 │                                 │
-│      [ Start a Rally ]          │
+│      [ Start a Raid ]          │
 │      [ Check the Quest Board ]  │
 │                                 │
 │                                 │
@@ -73,13 +73,13 @@ The first thing you see. Your climbing schedule.
 └─────────────────────────────────┘
 ```
 
-### Session Detail (tap into a Rally or Quest)
+### Session Detail (tap into a Raid or Quest)
 ```
 ┌─────────────────────────────────┐
 │  ← Back                        │
 │─────────────────────────────────│
 │                                 │
-│  ⚔ Rally at Movement           │
+│  ⚔ Raid at Movement           │
 │  Today, 6:00 PM                 │
 │                                 │
 │  PARTY                          │
@@ -299,7 +299,7 @@ Open sessions at your favorited gyms.
 │  NEW SESSION                    │
 │                                 │
 │  ┌─────────────────────────────┐│
-│  │  ⚔ Rally                    ││
+│  │  ⚔ Raid                    ││
 │  │  Invite your crew to climb  ││
 │  └─────────────────────────────┘│
 │                                 │
@@ -340,7 +340,7 @@ Open sessions at your favorited gyms.
 └─────────────────────────────────┘
 ```
 
-### Step 3a: Invite (Rally only)
+### Step 3a: Invite (Raid only)
 ```
 ┌─────────────────────────────────┐
 │  ← Back             Create →   │
@@ -451,7 +451,7 @@ For all sessions: includes guild invite and send summary.
 ## 7. Push Notification Examples
 
 ```
-Rally Invite:
+Raid Invite:
 ┌─────────────────────────────────┐
 │ 🏔 BELAY QUEST                  │
 │ Chalk Phantom is heading to     │
@@ -462,7 +462,7 @@ Rally Invite:
 Session Reminder (45 min before):
 ┌─────────────────────────────────┐
 │ 🏔 BELAY QUEST                  │
-│ Rally at Movement in 45 min!    │
+│ Raid at Movement in 45 min!    │
 │ Party: You + 3 others           │
 └─────────────────────────────────┘
 
@@ -484,9 +484,18 @@ Party Leader Deserted:
 ┌─────────────────────────────────┐
 │ 🏔 BELAY QUEST                  │
 │ ☠ Party leader deserted!        │
-│ Rally at Movement 6pm needs     │
+│ Raid at Movement 6pm needs     │
 │ a new leader. Step up?          │
 │ [Take Over]        [Leave]      │
+└─────────────────────────────────┘
+
+No-Show Warning (Quest only):
+┌─────────────────────────────────┐
+│ 🏔 BELAY QUEST                  │
+│ 🧙 Dark magic stirs...          │
+│ Did you make it to your quest   │
+│ at Movement?                    │
+│ [I Was There]   [I Couldn't]    │
 └─────────────────────────────────┘
 ```
 
@@ -551,7 +560,7 @@ The web page is a first-class experience, not a redirect wall. You can see the s
        └──────┬──────┘ └───┬────┘ └─────┬──────┘
               │            │            │
        ┌──────▼──────┐ ┌───▼────────┐  │
-       │ Rally your  │ │ Join open  │  │
+       │ Raid your  │ │ Join open  │  │
        │ crew        │ │ quest      │  │
        └──────┬──────┘ └───┬────────┘  │
               │            │            │
@@ -577,20 +586,158 @@ The web page is a first-class experience, not a redirect wall. You can see the s
 
 ---
 
+## 9. Onboarding (Wizard-Guided)
+
+The wizard guides you through setup. Each step is a single screen with
+the wizard character providing flavor text.
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│         [Pixel Wizard]          │
+│                                 │
+│  🧙 "Ah, a new climber          │
+│   approaches! Let me see...     │
+│   The chalk spirits have        │
+│   chosen a name for you."       │
+│                                 │
+│  ┌─────────────────────────────┐│
+│  │                             ││
+│  │     ✨ Crimson Gecko ✨       ││
+│  │                             ││
+│  └─────────────────────────────┘│
+│                                 │
+│  [ That's me! ]                 │
+│  [ Reroll ]  ←── limited uses? │
+│                                 │
+└─────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│         [Pixel Wizard]          │
+│                                 │
+│  🧙 "What manner of walls       │
+│   do you scale, adventurer?"    │
+│                                 │
+│  CLIMBING STYLE                 │
+│  [Boulder] [Top Rope] [Lead]   │
+│  [All of the above]            │
+│                                 │
+│  YOUR GRADE RANGE               │
+│  Route: [ 5.10a ] — [ 5.11+ ]  │
+│  Boulder: [ V4 ] — [ V6 ]      │
+│                                 │
+│  HOW LONG HAVE YOU CLIMBED?     │
+│  [ < 1 year ] [ 1-3 years ]    │
+│  [ 3-5 years ] [ 5+ years ]    │
+│                                 │
+│  [ Continue → ]                 │
+│                                 │
+└─────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│         [Pixel Wizard]          │
+│                                 │
+│  🧙 "Every adventurer needs     │
+│   a dungeon. Where do you       │
+│   climb?"                       │
+│                                 │
+│  SEARCH YOUR GYMS               │
+│  ┌─────────────────────────────┐│
+│  │ [Search gyms near me...]    ││
+│  └─────────────────────────────┘│
+│                                 │
+│  NEARBY                         │
+│  ☑ Movement Climbing            │
+│  ☐ Summit Dallas                │
+│  ☐ Austin Bouldering Co         │
+│                                 │
+│  [ Continue → ]                 │
+│                                 │
+└─────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│         [Pixel Wizard]          │
+│                                 │
+│  🧙 "One last thing — invite    │
+│   your party! Enter their       │
+│   numbers and I'll send word."  │
+│                                 │
+│  ┌─────────────────────────────┐│
+│  │ [Enter phone number...]     ││
+│  └─────────────────────────────┘│
+│  Added:                         │
+│  📱 (512) 555-0142              │
+│  📱 (512) 555-0199              │
+│                                 │
+│  [ Skip for now ]               │
+│  [ Start Your Quest → ]        │
+│                                 │
+└─────────────────────────────────┘
+```
+
+---
+
+## 10. Session Web Page (Universal Link Landing)
+
+What non-users see when they tap a belay.quest link.
+No app required to view — app required to join.
+
+```
+┌─────────────────────────────────────────┐
+│  🏔 BELAY QUEST                         │
+│─────────────────────────────────────────│
+│                                         │
+│  You've been invited to climb!          │
+│                                         │
+│  ┌─────────────────────────────────────┐│
+│  │  ⚔ Raid at Movement Climbing       ││
+│  │  Thursday, Feb 27 · around 6:00 PM  ││
+│  │                                     ││
+│  │  PARTY (3 going)                    ││
+│  │  ★ Crimson Gecko (Lv.12)           ││
+│  │    Chalk Phantom (Lv.8)            ││
+│  │    Boulder Otter (Lv.5)            ││
+│  │                                     ││
+│  │  + 2 spots open                     ││
+│  └─────────────────────────────────────┘│
+│                                         │
+│  [ Open in App ]                        │
+│  [ Download Belay Quest ]               │
+│     iOS · Android                       │
+│                                         │
+│  ─────────────────────────────────────  │
+│  Belay Quest — Find your climbing party │
+│  belay.quest                            │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+---
+
 ## Screen Inventory
 
 | Screen | Purpose | Priority |
 |--------|---------|----------|
 | Quests (home) | View upcoming sessions | P0 |
 | Session Detail | See party, check-in msg, live send logging | P0 |
-| Create Rally | Gym → time → invite flow | P0 |
+| Create Raid | Gym → time → invite flow | P0 |
 | Quest Board | Browse open quests by gym | P0 |
 | Post to Quest Board | Gym → time → capacity → grade range | P0 |
 | Party (connections) | View/manage connections and guilds | P0 |
 | Character | Stats, level, grade history, settings | P0 |
 | Post-Session Prompt | XP summary, "climb again?", guild invite | P0 |
-| Onboarding | Sign up, generate name, set grades, fav gyms | P0 |
+| Onboarding (wizard) | Wizard-guided: name → grades → gyms → invite | P0 |
 | Session Web Page | Universal link landing — viewable without app | P0 |
+| No-Show Prompt | Honor-system "did you make it?" (Quests only) | P0 |
 | Manage Guild | Add/remove people from a saved guild | P1 |
 | Settings | Notifications, account, favorites | P1 |
 | Route Logger | Inline send/attempt logging (in session detail) | P1 |
