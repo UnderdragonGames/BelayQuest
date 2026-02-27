@@ -6,8 +6,8 @@
 Tab Bar (bottom)
 ├── Quests      (your upcoming sessions)
 ├── Quest Board (discovery / open quests)
-├── Party       (connections & groups)
-└── Profile     (your stats, level, settings)
+├── Party       (connections & guilds)
+└── Character   (your stats, level, settings)
 ```
 
 ---
@@ -48,7 +48,7 @@ The first thing you see. Your climbing schedule.
 │  └─────────────────────────────┘│
 │                                 │
 │─────────────────────────────────│
-│  [Quests]  [Board]  [Party]  [Me]│
+│  [Quests] [Board] [Party] [Character]│
 └─────────────────────────────────┘
 ```
 
@@ -69,7 +69,7 @@ The first thing you see. Your climbing schedule.
 │                                 │
 │                                 │
 │─────────────────────────────────│
-│  [Quests]  [Board]  [Party]  [Me]│
+│  [Quests] [Board] [Party] [Character]│
 └─────────────────────────────────┘
 ```
 
@@ -110,10 +110,17 @@ The first thing you see. Your climbing schedule.
 │  │  wall" — You                ││
 │  └─────────────────────────────┘│
 │                                 │
+│  LIVE SENDS            [+ Log] │
+│  ┌─────────────────────────────┐│
+│  │  5.11  ✓ sent        +45 XP││
+│  │  5.11+ ✗ attempt     +10 XP││
+│  │  V5    ✓ sent        +30 XP││
+│  └─────────────────────────────┘│
+│                                 │
 │  [ Cancel My Attendance ]       │
 │                                 │
 │─────────────────────────────────│
-│  [Quests]  [Board]  [Party]  [Me]│
+│  [Quests] [Board] [Party] [Character]│
 └─────────────────────────────────┘
 ```
 
@@ -159,7 +166,7 @@ Open sessions at your favorited gyms.
 │  [ + Post to Quest Board ]      │
 │                                 │
 │─────────────────────────────────│
-│  [Quests]  [Board]  [Party]  [Me]│
+│  [Quests] [Board] [Party] [Character]│
 └─────────────────────────────────┘
 ```
 
@@ -177,20 +184,20 @@ Open sessions at your favorited gyms.
 
 ---
 
-## 3. Party Tab (Connections & Groups)
+## 3. Party Tab (Connections & Guilds)
 
 ```
 ┌─────────────────────────────────┐
 │  PARTY                          │
 │─────────────────────────────────│
 │                                 │
-│  GROUPS                         │
+│  GUILDS                         │
 │  ┌──────────┐ ┌──────────┐     │
 │  │ Tuesday  │ │ Weekend  │     │
 │  │ Crew     │ │ Warriors │     │
 │  │ 4 people │ │ 7 people │     │
 │  └──────────┘ └──────────┘     │
-│  [ + New Group ]                │
+│  [ + New Guild ]                │
 │                                 │
 │  CONNECTIONS                    │
 │  ┌─────────────────────────────┐│
@@ -216,17 +223,17 @@ Open sessions at your favorited gyms.
 │  [ + Add by Phone Number ]      │
 │                                 │
 │─────────────────────────────────│
-│  [Quests]  [Board]  [Party]  [Me]│
+│  [Quests] [Board] [Party] [Character]│
 └─────────────────────────────────┘
 ```
 
 ---
 
-## 4. Profile Tab (Me)
+## 4. Character Tab
 
 ```
 ┌─────────────────────────────────┐
-│  YOUR QUEST                     │
+│  CHARACTER                      │
 │─────────────────────────────────│
 │                                 │
 │  ┌─────────────────────────────┐│
@@ -275,7 +282,7 @@ Open sessions at your favorited gyms.
 │  [ Edit Profile ]               │
 │                                 │
 │─────────────────────────────────│
-│  [Quests]  [Board]  [Party]  [Me]│
+│  [Quests] [Board] [Party] [Character]│
 └─────────────────────────────────┘
 ```
 
@@ -341,7 +348,7 @@ Open sessions at your favorited gyms.
 │                                 │
 │  INVITE                         │
 │                                 │
-│  GROUPS                         │
+│  GUILDS                         │
 │  ┌──────────┐ ┌──────────┐     │
 │  │☐Tuesday  │ │☐Weekend  │     │
 │  │  Crew    │ │  Warriors│     │
@@ -389,24 +396,37 @@ Open sessions at your favorited gyms.
 
 ---
 
-## 6. Post-Session Prompt (Discovery only)
+## 6. Post-Session Prompt
 
-Appears after a Quest Board session's scheduled time has passed.
+Appears after a session's scheduled time has passed.
+For Quest Board sessions: includes "climb again?" prompts.
+For all sessions: includes guild invite and send summary.
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
 │  Quest Complete!                │
 │                                 │
-│  You climbed with:              │
+│  SESSION SENDS                  │
+│  ┌─────────────────────────────┐│
+│  │  5.11  ✓        +45 XP     ││
+│  │  5.11+ ✗        +10 XP     ││
+│  │  V5    ✓        +30 XP     ││
+│  │              Total: +85 XP  ││
+│  │  [ + Log More ]             ││
+│  └─────────────────────────────┘│
 │                                 │
+│  YOU CLIMBED WITH          ←─── Quest Board only
 │  ┌─────────────────────────────┐│
 │  │  Mossy Badger               ││
 │  │  Lv.3 · Boulder · V4       ││
 │  │                             ││
 │  │  Climb together again?      ││
-│  │                             ││
 │  │  [ Yes! ]    [ Not now ]    ││
+│  │                             ││
+│  │  Add to guild?              ││
+│  │  [Tuesday Crew] [Weekend..]││
+│  │  [ + New Guild ]            ││
 │  └─────────────────────────────┘│
 │                                 │
 │  ┌─────────────────────────────┐│
@@ -414,12 +434,14 @@ Appears after a Quest Board session's scheduled time has passed.
 │  │  Lv.7 · Boulder · V6       ││
 │  │                             ││
 │  │  Climb together again?      ││
-│  │                             ││
 │  │  [ Yes! ]    [ Not now ]    ││
+│  │                             ││
+│  │  Add to guild?              ││
+│  │  [Tuesday Crew] [Weekend..]││
+│  │  [ + New Guild ]            ││
 │  └─────────────────────────────┘│
 │                                 │
-│  LOG YOUR SENDS                 │
-│  [ Log Routes from This Sesh ] │
+│  [ Done ]                       │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -489,10 +511,14 @@ Join the quest: belay.quest/j/x7k2
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Link opens:
-- On mobile with app → opens session directly
-- On mobile without app → app store with deep link preserved
-- On any device → web preview showing session details + download prompt
+Link opens a **web page** (universal link / app link):
+- **Always works in browser** — no app required to view session details
+- Web page shows: gym, time, who's going (generated names), spots remaining
+- On mobile with app installed → universal link opens session directly in app
+- On mobile without app → web page with session info + app store link (deep link preserved for post-install)
+- On desktop → full web view of session, prompt to download mobile app to join
+
+The web page is a first-class experience, not a redirect wall. You can see the session without the app. You need the app to join.
 
 ---
 
@@ -556,16 +582,17 @@ Link opens:
 | Screen | Purpose | Priority |
 |--------|---------|----------|
 | Quests (home) | View upcoming sessions | P0 |
-| Session Detail | See party, check-in msg, manage attendance | P0 |
+| Session Detail | See party, check-in msg, live send logging | P0 |
 | Create Rally | Gym → time → invite flow | P0 |
 | Quest Board | Browse open quests by gym | P0 |
 | Post to Quest Board | Gym → time → capacity → grade range | P0 |
-| Party (connections) | View/manage connections and groups | P0 |
-| Profile (me) | Stats, level, grade history, settings | P0 |
-| Post-Session Prompt | "Climb again?" mutual match | P0 |
+| Party (connections) | View/manage connections and guilds | P0 |
+| Character | Stats, level, grade history, settings | P0 |
+| Post-Session Prompt | XP summary, "climb again?", guild invite | P0 |
 | Onboarding | Sign up, generate name, set grades, fav gyms | P0 |
-| Manage Group | Add/remove people from a saved group | P1 |
+| Session Web Page | Universal link landing — viewable without app | P0 |
+| Manage Guild | Add/remove people from a saved guild | P1 |
 | Settings | Notifications, account, favorites | P1 |
-| Route Logger | Log sends/attempts during or after session | P1 |
+| Route Logger | Inline send/attempt logging (in session detail) | P1 |
 | Grade Breakthrough | Celebration screen with pixel art | P1 |
 | Connection Profile | View another person's public profile | P1 |

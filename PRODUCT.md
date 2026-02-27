@@ -87,8 +87,9 @@ Every user gets a **persistent procedurally generated name** combining climbing/
 1. You meet someone at the gym IRL and want to connect
 2. Enter their phone number in the app
 3. **If they have an account:** automatically links and adds them to your connections
-4. **If they don't have an account:** sends an SMS with a link showing the session and who's going — this is the organic invite/viral mechanic
-5. If someone is connected both via phone number AND via in-app discovery, **identities merge**
+4. **If they don't have an account:** sends an SMS with a universal link to a **web page** showing the session (gym, time, who's going, spots remaining). The web page is a first-class experience — no app required to view. App required to join. This is the organic invite/viral mechanic.
+5. Universal links (iOS) / App Links (Android) open the session directly in-app if installed
+6. If someone is connected both via phone number AND via in-app discovery, **identities merge**
 
 ### Flow 4: Solo Climbing / Progression
 
@@ -145,8 +146,8 @@ Status effects are visible on your profile and add personality:
 
 ### Session Lifecycle
 1. **Created** — creator picks gym, time, invites people or posts publicly
-2. **Active** — people join, check in, climb
-3. **Completed** — session ends, post-session prompts fire (for discovery sessions)
+2. **Active** — people join, check in, climb, **log sends live** (so you don't forget)
+3. **Completed** — session ends, post-session prompts fire (XP summary, "climb again?" for discovery, guild invite)
 4. **Canceled/Abandoned** — see below
 
 ### Session Leadership
@@ -184,14 +185,22 @@ Status effects are visible on your profile and add personality:
 - Sorted/filtered by grade range if a gym has many
 - Shows capacity (e.g., "3/5 spots filled")
 
-### Third View: Party (Connections & Groups)
+### Third View: Party (Connections & Guilds)
 - Your connection list (generated names + any nicknames you've set)
-- Saved groups for quick Rally invites
+- **Guilds** — saved named groups for quick Rally invites ("Tuesday Crew," "Weekend Warriors")
+- After a session, you can add new connections directly to a guild from the post-session prompt
 - Manage connections (easy removal — no notification sent to the other person)
+
+### Fourth View: Character
+- Your pixel avatar, generated name, level, current status effect
+- Stats: total sessions, routes logged, max grades, XP
+- Recent sends with XP earned
+- Grade history graph (progression over time)
+- Settings, favorite gyms, edit profile
 
 ### Session Creation
 - Prominent, fluid action to create a new Rally or post to the Quest Board
-- Quick flow: gym → time → invite (individuals or group) or post as quest
+- Quick flow: gym → time → invite (individuals or guild) or post as quest
 
 ---
 
@@ -228,7 +237,7 @@ Status effects are visible on your profile and add personality:
 
 ### Visual Style
 - **Pixel art / retro RPG** — 8-bit-ish character avatars, chunky UI elements
-- Adventure/quest metaphor: connections are your "party," sessions are "quests"
+- Adventure/quest metaphor: connections are your "party," saved groups are "guilds," sessions are "quests"
 - Warm, playful, irreverent — not corporate, not Strava-sleek
 - Hand-drawn or illustrated supplementary elements (trail map meets field journal)
 
@@ -276,5 +285,7 @@ What climbers actually use today: texting friends, Facebook groups, walking up t
 6. **Session check-in message** — Is this a single message field, or a mini-chat within the session? Single message is simpler and less likely to become a messaging app.
 7. **Status effect duration** — How long do blessings last? How many sessions to clear a debuff? Needs tuning.
 8. **XP formula specifics** — Exact XP values per grade delta. How many levels? What do levels unlock (if anything)?
-9. **Widget / ambient awareness** — Future feature. Home screen widget showing "friends climbing today."
-10. **Outdoor climbing support** — Explicitly out of scope for v1. Revisit based on community demand.
+9. **No-show detection** — How do we know someone no-showed vs. just didn't check in? Does someone have to report it, or is it automatic (e.g., session ended and you never logged a send or tapped "I was there")?
+10. **Session web page scope** — How much of the app experience is on the web? Just the invite landing page? Or can you view the Quest Board on web too?
+11. **Widget / ambient awareness** — Future feature. Home screen widget showing "friends climbing today."
+12. **Outdoor climbing support** — Explicitly out of scope for v1. Revisit based on community demand.
