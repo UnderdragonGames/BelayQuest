@@ -317,6 +317,6 @@ What climbers actually use today: texting friends, Facebook groups, walking up t
 7. **Status effect duration** — How long do blessings last? How many sessions to clear a debuff? Needs tuning.
 8. **XP formula specifics** — Exact XP values per grade delta. How many levels? What do levels unlock (if anything)?
 9. **Wizard name and personality** — The wizard mascot needs a name. Should feel like a climbing-world wizard. Personality details TBD.
-10. **Name reroll limits** — During onboarding, can you reroll your generated name? How many times? Unlimited feels wrong (people will hunt for "cool" names), but zero feels rigid.
+10. ~~**Name reroll limits**~~ — **Resolved: unlimited rerolls.** Finding the perfect name is part of the fun.
 11. **Widget / ambient awareness** — Future feature. Home screen widget showing "friends climbing today."
 12. **Outdoor climbing support** — Explicitly out of scope for v1. Revisit based on community demand.
