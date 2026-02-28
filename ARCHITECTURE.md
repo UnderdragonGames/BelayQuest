@@ -152,10 +152,11 @@ export default defineSchema({
     note: v.optional(v.string()),         // "Looking for lead belay"
     checkInMessage: v.optional(v.string()), // "Blue shirt, slab wall"
     status: v.union(
-      v.literal("open"),                  // Accepting joins
-      v.literal("active"),               // Session time arrived
-      v.literal("completed"),            // Session ended
-      v.literal("dissolved"),            // No leader, auto-dissolved
+      v.literal("draft"),                // Quick Raid pre-confirmation, no invites sent
+      v.literal("open"),                 // Accepting joins, invites sent
+      v.literal("active"),              // Session time arrived
+      v.literal("completed"),           // Session ended
+      v.literal("dissolved"),           // No leader, auto-dissolved
     ),
     // Quest-specific fields
     capacity: v.optional(v.number()),     // Soft cap (3-7)
@@ -586,13 +587,21 @@ User taps [⚡ Quick Raid] on Quests tab
   → sessions.quickRaid() mutation:
     1. Get user's default guild (guild.isDefault = true)
     2. Get user's most-used gym (or first favorite)
-    3. Set scheduledAt = now + 1 hour
+    3. Look up last completed raid with same guild
+       → If found: use same day-of-week and time
+         (e.g., last raid was Tuesday 6pm → schedule next Tuesday 6pm)
+       → If not found: default to now + 1 hour
     4. Create session with type "raid"
     5. Create sessionMember rows for all guild members (status: "invited")
     6. Trigger push notifications to all guild members
-    7. Return sessionId
-  → Navigate to session detail
+    7. Return sessionId (session created in "draft" status, invites NOT sent yet)
+  → Navigate to pre-filled session confirmation screen
+  → User reviews gym, time, guild → can adjust any field
+  → User taps "Send Invites" → invites fire, session moves to "open" status
 ```
+
+The smart scheduling means Quick Raid learns your patterns. If you always climb
+with "Tuesday Crew" on Tuesdays at 6pm, one tap schedules the next one.
 
 If no default guild exists, prompt to set one. If no favorite gym, prompt to add one. These are onboarding gates — after onboarding, quick raid always works.
 
