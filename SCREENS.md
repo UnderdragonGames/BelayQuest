@@ -112,9 +112,18 @@ The first thing you see. Your climbing schedule.
 │                                 │
 │  LIVE SENDS            [+ Log] │
 │  ┌─────────────────────────────┐│
-│  │  5.11  ✓ sent        +45 XP││
-│  │  5.11+ ✗ attempt     +10 XP││
-│  │  V5    ✓ sent        +30 XP││
+│  │  5.11  ✓ send   on-grade    ││
+│  │    +45 XP                   ││
+│  │  5.11+ ✗ attempt  hard      ││
+│  │    +10 XP  🩹 tape earned   ││
+│  │  V5    ✓ send   soft        ││
+│  │    +30 XP                   ││
+│  └─────────────────────────────┘│
+│                                 │
+│  EVENTS                        │
+│  ┌─────────────────────────────┐│
+│  │  ✨ Grade Breakthrough!      ││
+│  │  🏔 Volume PR: 3× V5!       ││
 │  └─────────────────────────────┘│
 │                                 │
 │  [ Cancel My Attendance ]       │
@@ -238,13 +247,18 @@ Open sessions at your favorited gyms.
 │                                 │
 │  ┌─────────────────────────────┐│
 │  │    [Pixel Avatar]           ││
+│  │    (profile view: with      ││
+│  │     cosmetic overlays)      ││
 │  │                             ││
 │  │    Crimson Gecko            ││
+│  │    The Grinder ←── hero     ││
 │  │    Level 12                 ││
 │  │    ✨ Ascendant              ││
 │  │                             ││
 │  │    Lead · 5.11+             ││
 │  │    Climbing 3 years         ││
+│  │                             ││
+│  │    [ Edit Avatar ]          ││
 │  └─────────────────────────────┘│
 │                                 │
 │  STATS                          │
@@ -256,19 +270,34 @@ Open sessions at your favorited gyms.
 │  │  XP            2,340        ││
 │  └─────────────────────────────┘│
 │                                 │
+│  ACHIEVEMENTS       [View All] │
+│  ┌─────────────────────────────┐│
+│  │  🏔 First V5!               ││
+│  │  🔥 7-Day Streak            ││
+│  │  🧗 100 Sends               ││
+│  │  + 4 more                   ││
+│  └─────────────────────────────┘│
+│                                 │
+│  INVENTORY          [View All] │
+│  ┌─────────────────────────────┐│
+│  │  🩹 Tape ×12                ││
+│  │  🧲 Carabiner (trophy)     ││
+│  │  👟 Glowing Shoes (cosmetic)││
+│  └─────────────────────────────┘│
+│                                 │
 │  RECENT SENDS                   │
 │  ┌─────────────────────────────┐│
 │  │  5.11+ ✨ NEW PR!           ││
 │  │  Movement · Feb 24          ││
 │  │  +180 XP                    ││
 │  ├─────────────────────────────┤│
-│  │  5.11                       ││
+│  │  5.11  on-grade             ││
 │  │  Movement · Feb 24          ││
 │  │  +45 XP                    ││
 │  ├─────────────────────────────┤│
-│  │  V6 (attempt)               ││
+│  │  V6 (attempt) hard          ││
 │  │  Summit · Feb 22            ││
-│  │  +20 XP                    ││
+│  │  +20 XP  🩹 tape            ││
 │  └─────────────────────────────┘│
 │                                 │
 │  GRADE HISTORY                  │
@@ -723,6 +752,122 @@ No app required to view — app required to join.
 
 ---
 
+## 11. Avatar Appearance Picker
+
+Accessible from Character tab ("Edit Avatar") and during session check-in for party leaders.
+
+### Session Check-In (Leader Prompted)
+```
+┌─────────────────────────────────┐
+│  ← Back                        │
+│─────────────────────────────────│
+│                                 │
+│  🧙 "What are you wearing       │
+│   today, adventurer?"           │
+│                                 │
+│  ┌─────────────────────────────┐│
+│  │                             ││
+│  │    [Pixel Avatar Preview]   ││
+│  │    (session view: no        ││
+│  │     cosmetic overlays)      ││
+│  │                             ││
+│  └─────────────────────────────┘│
+│                                 │
+│  HAIR                           │
+│  [Hair] [Hat]   Color: [■■■■]  │
+│                                 │
+│  SKIN TONE                      │
+│  [1] [2] [3]                    │
+│                                 │
+│  GLASSES                        │
+│  [Yes] [No]     Color: [■■■■]  │
+│                                 │
+│  SHIRT          Color: [■■■■]  │
+│  PANTS                          │
+│  [Pants] [Shorts] Color: [■■■■]│
+│                                 │
+│  HARNESS                        │
+│  [Yes] [No]     Color: [■■■■]  │
+│                                 │
+│  SHOES          Color: [■■■■]  │
+│                                 │
+│  Defaults from: Movement ←gym  │
+│                                 │
+│  [ Confirm & Check In ]        │
+│                                 │
+└─────────────────────────────────┘
+```
+
+Notes:
+- Color pickers offer 8-10 preset swatches + optional custom hex
+- Per-gym defaults: selections persist per gym (harness at rope gym, no harness at bouldering)
+- First time at a gym inherits from most recent defaults
+- Non-leaders can access from Character tab but are not prompted
+
+### Achievements & Inventory Screens
+
+```
+┌─────────────────────────────────┐
+│  ← Character                   │
+│─────────────────────────────────│
+│  ACHIEVEMENTS                   │
+│                                 │
+│  ┌─────────────────────────────┐│
+│  │  🏔 First V5!               ││
+│  │  Earned Feb 24              ││
+│  │  → Unlocked: Glowing Shoes ││
+│  ├─────────────────────────────┤│
+│  │  🔥 7-Day Streak            ││
+│  │  Earned Feb 20              ││
+│  │  → Unlocked: Rope (trophy) ││
+│  ├─────────────────────────────┤│
+│  │  🧗 100 Sends               ││
+│  │  Earned Feb 15              ││
+│  │  → Unlocked: Chalk          ││
+│  ├─────────────────────────────┤│
+│  │  ☐ Boss Slayer (locked)     ││
+│  │  ☐ Explorer (3/5 gyms)     ││
+│  │  ☐ Rally Captain (locked)  ││
+│  └─────────────────────────────┘│
+│                                 │
+└─────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────┐
+│  ← Character                   │
+│─────────────────────────────────│
+│  INVENTORY                      │
+│                                 │
+│  CONSUMABLES                    │
+│  ┌─────────────────────────────┐│
+│  │  🩹 Tape ×12                ││
+│  │  Earned from attempts       ││
+│  ├─────────────────────────────┤│
+│  │  🧊 Chalk ×3                ││
+│  │  Earned from volume         ││
+│  └─────────────────────────────┘│
+│                                 │
+│  TROPHIES                       │
+│  ┌─────────────────────────────┐│
+│  │  🧲 Carabiner              ││
+│  │  "First session" · Feb 1   ││
+│  ├─────────────────────────────┤│
+│  │  👟 Glowing Shoes           ││
+│  │  "First V5!" · Feb 24      ││
+│  └─────────────────────────────┘│
+│                                 │
+│  COSMETICS (equipped)           │
+│  ┌─────────────────────────────┐│
+│  │  👟 Glowing Shoes — ON     ││
+│  │  (visible on profile avatar)││
+│  └─────────────────────────────┘│
+│                                 │
+└─────────────────────────────────┘
+```
+
+---
+
 ## Screen Inventory
 
 | Screen | Purpose | Priority |
@@ -738,8 +883,11 @@ No app required to view — app required to join.
 | Onboarding (wizard) | Wizard-guided: name → grades → gyms → invite | P0 |
 | Session Web Page | Universal link landing — viewable without app | P0 |
 | No-Show Prompt | Honor-system "did you make it?" (Quests only) | P0 |
+| Avatar Picker | Customize pixel-art avatar (session check-in + character tab) | P1 |
+| Achievements List | View earned + locked achievements with rewards | P1 |
+| Inventory View | Browse held items (consumables, trophies, cosmetics) | P1 |
 | Manage Guild | Add/remove people from a saved guild | P1 |
 | Settings | Notifications, account, favorites | P1 |
-| Route Logger | Inline send/attempt logging (in session detail) | P1 |
+| Route Logger | Inline send/attempt logging with difficulty rating (in session detail) | P1 |
 | Grade Breakthrough | Celebration screen with pixel art | P1 |
-| Connection Profile | View another person's public profile | P1 |
+| Connection Profile | View another person's public profile (avatar + achievements) | P1 |

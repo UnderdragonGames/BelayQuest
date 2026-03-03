@@ -1,12 +1,43 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
+
+// ─── Avatar shape (reused across tables) ─────────────────────
+// Not a Convex validator — just a reference for the shape used
+// in avatarDefaults, avatarGymOverrides, and session snapshots.
+const avatarValidator = v.object({
+  hair: v.union(v.literal("medium"), v.literal("hat")),
+  hairColor: v.string(),
+  skinTone: v.union(v.literal(1), v.literal(2), v.literal(3)),
+  glasses: v.boolean(),
+  glassesColor: v.optional(v.string()),
+  shirtColor: v.string(),
+  pantsType: v.union(v.literal("pants"), v.literal("shorts")),
+  pantsColor: v.string(),
+  harness: v.boolean(),
+  harnessColor: v.optional(v.string()),
+  shoeColor: v.string(),
+});
 
 export default defineSchema({
+  ...authTables,
+
   // ─── Users ───────────────────────────────────────────────
+  // Extends authTables.users with app-specific fields.
+  // Auth fields (phone, email, name, image, etc.) come from authTables;
+  // we override to add our app columns.
   users: defineTable({
-    phone: v.string(),
-    generatedName: v.string(),
-    climbingStyles: v.array(v.string()),
+    // Auth fields (all optional to allow incremental onboarding)
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    image: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.float64()),
+    phoneVerificationTime: v.optional(v.float64()),
+    isAnonymous: v.optional(v.boolean()),
+    // App-specific fields
+    generatedName: v.optional(v.string()),
+    climbingStyles: v.optional(v.array(v.string())),
     gradeRangeRoute: v.optional(
       v.object({
         min: v.string(),
@@ -20,8 +51,8 @@ export default defineSchema({
       })
     ),
     yearsClimbing: v.optional(v.string()),
-    level: v.number(),
-    totalXp: v.number(),
+    level: v.optional(v.number()),
+    totalXp: v.optional(v.number()),
     currentStatus: v.optional(
       v.object({
         effect: v.string(),
@@ -31,12 +62,35 @@ export default defineSchema({
     ),
     maxGradeRoute: v.optional(v.string()),
     maxGradeBoulder: v.optional(v.string()),
-    favoriteGyms: v.array(v.id("gyms")),
+    favoriteGyms: v.optional(v.array(v.id("gyms"))),
     expoPushToken: v.optional(v.string()),
-    onboardingComplete: v.boolean(),
+    pendingInvitePhones: v.optional(v.array(v.string())),
+    onboardingComplete: v.optional(v.boolean()),
+
+    // ─── Cached progression stats ──────────────────────────
+    // Volume PRs: max sends at each grade in a single session
+    // Stored as array of {grade, count} since Convex doesn't support Map
+    volumePRs: v.optional(
+      v.array(v.object({ grade: v.string(), count: v.number() }))
+    ),
+
+    // ─── Hero class (auto-detected, v1+) ───────────────────
+    heroClass: v.optional(
+      v.union(
+        v.literal("grinder"),
+        v.literal("sender"),
+        v.literal("projector"),
+        v.literal("explorer"),
+        v.literal("rally_captain")
+      )
+    ),
+
+    // ─── Avatar defaults ───────────────────────────────────
+    avatarDefaults: v.optional(avatarValidator),
   })
-    .index("by_phone", ["phone"])
-    .index("by_generatedName", ["generatedName"]),
+    .index("by_generatedName", ["generatedName"])
+    .index("email", ["email"])
+    .index("phone", ["phone"]),
 
   // ─── Gyms ────────────────────────────────────────────────
   gyms: defineTable({
@@ -52,6 +106,55 @@ export default defineSchema({
   })
     .index("by_city_state", ["state", "city"])
     .searchIndex("search_name", { searchField: "name" }),
+
+  // ─── Gym Grade Systems ──────────────────────────────────
+  // Gym-specific grading systems (e.g., color circuits).
+  // Standard systems (YDS, V Scale, Font, French) are handled in code.
+  gymGradeSystems: defineTable({
+    gymId: v.id("gyms"),
+    name: v.string(), // "Bouldering Project Circuit"
+    type: v.union(v.literal("color"), v.literal("custom")),
+    grades: v.array(
+      v.object({
+        label: v.string(), // "Yellow", "Red", "Purple"
+        order: v.number(), // 1, 2, 3 — defines progression
+        vRangeMin: v.optional(v.string()), // "VB"
+        vRangeMax: v.optional(v.string()), // "V1"
+        xpMidpoint: v.optional(v.string()), // "V0" — used for XP calculation
+      })
+    ),
+  }).index("by_gym", ["gymId"]),
+
+  // ─── Routes (v1+ — identified route entities) ───────────
+  // Not populated in v0 (manual logging has no route identity).
+  // Created when QR/NFC scanning is introduced.
+  routes: defineTable({
+    gymId: v.id("gyms"),
+    grade: v.string(),
+    gradeSystem: v.union(
+      v.literal("yds"),
+      v.literal("v_scale"),
+      v.literal("font"),
+      v.literal("french"),
+      v.literal("gym_color")
+    ),
+    climbingType: v.optional(v.string()), // "boulder", "lead", "top_rope"
+    locationDescription: v.optional(v.string()), // "blue holds, slab wall"
+    qrIdentifier: v.optional(v.string()), // QR/NFC code
+    createdAt: v.number(),
+    lastLoggedAt: v.optional(v.number()), // Tracks staleness
+    // Cached community difficulty stats (recency-weighted)
+    difficultyStats: v.optional(
+      v.object({
+        avgRating: v.number(), // 1-4 scale (soft to very_hard)
+        ratingCount: v.number(),
+        isBoss: v.boolean(), // Hardest at this grade at this gym
+      })
+    ),
+  })
+    .index("by_gym", ["gymId"])
+    .index("by_gym_grade", ["gymId", "grade"])
+    .index("by_qr", ["qrIdentifier"]),
 
   // ─── Sessions (Raids + Quests) ───────────────────────────
   sessions: defineTable({
@@ -102,6 +205,8 @@ export default defineSchema({
     invitedBy: v.id("users"),
     respondedAt: v.optional(v.number()),
     checkedIn: v.boolean(),
+    // Avatar snapshot at session time (for identification)
+    avatarSnapshot: v.optional(avatarValidator),
   })
     .index("by_session", ["sessionId"])
     .index("by_user", ["userId"])
@@ -137,21 +242,41 @@ export default defineSchema({
     .index("by_user", ["userId"]),
 
   // ─── Sends (Route Log) ──────────────────────────────────
+  // Every climb logged — both sends and attempts (same entity).
   sends: defineTable({
     userId: v.id("users"),
     sessionId: v.optional(v.id("sessions")),
     gymId: v.id("gyms"),
     grade: v.string(),
-    gradeSystem: v.union(v.literal("yds"), v.literal("v_scale")),
+    gradeSystem: v.union(
+      v.literal("yds"),
+      v.literal("v_scale"),
+      v.literal("font"),
+      v.literal("french"),
+      v.literal("gym_color")
+    ),
     type: v.union(v.literal("send"), v.literal("attempt")),
     xpAwarded: v.number(),
     climbedAt: v.number(),
+    // Forward-compatible: links to identified route (null in v0)
+    routeId: v.optional(v.id("routes")),
+    // Subjective difficulty relative to stated grade
+    difficultyRating: v.optional(
+      v.union(
+        v.literal("soft"),
+        v.literal("on_grade"),
+        v.literal("hard"),
+        v.literal("very_hard")
+      )
+    ),
   })
     .index("by_user", ["userId"])
     .index("by_session", ["sessionId"])
-    .index("by_user_date", ["userId", "climbedAt"]),
+    .index("by_user_date", ["userId", "climbedAt"])
+    .index("by_gym_grade", ["gymId", "grade"]),
 
   // ─── XP Ledger ───────────────────────────────────────────
+  // Source of truth for all XP. users.totalXp is a cached sum.
   xpLedger: defineTable({
     userId: v.id("users"),
     amount: v.number(),
@@ -160,6 +285,9 @@ export default defineSchema({
       v.literal("attempt"),
       v.literal("party_bonus"),
       v.literal("grade_breakthrough"),
+      v.literal("boss_defeat"),
+      v.literal("volume_pr"),
+      v.literal("achievement"),
       v.literal("adjustment")
     ),
     sourceId: v.optional(v.string()),
@@ -167,6 +295,70 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_date", ["userId", "createdAt"]),
+
+  // ─── Events (Accomplishments & Milestones) ───────────────
+  // Significant moments computed from sends/sessions.
+  // Low volume (1-3 per session). Flexible, extensible.
+  // Drives achievement detection, hero class computation, and
+  // the "recent accomplishments" timeline.
+  events: defineTable({
+    userId: v.id("users"),
+    type: v.string(), // Flexible: "grade_breakthrough", "volume_pr", "boss_defeat", "level_up", "tape_earned", etc.
+    metadata: v.optional(v.any()), // { grade?, attemptCount?, previousRecord?, newRecord?, ... }
+    xpAwarded: v.number(), // 0 if no XP for this event type
+    sessionId: v.optional(v.id("sessions")),
+    sendId: v.optional(v.id("sends")),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_date", ["userId", "createdAt"])
+    .index("by_type", ["type"]),
+
+  // ─── Inventory Items ─────────────────────────────────────
+  // Per-item tracking with provenance. Enables trading, gifting,
+  // and individual item history. Climbing-themed items.
+  inventoryItems: defineTable({
+    userId: v.id("users"), // Current owner
+    itemType: v.string(), // "tape", "chalk", "liquid_chalk", "carabiner", "quickdraw", "brush", etc.
+    sourceEventId: v.optional(v.id("events")),
+    sourceAchievementId: v.optional(v.id("achievements")),
+    status: v.union(
+      v.literal("held"),
+      v.literal("used"),
+      v.literal("traded")
+    ),
+    acquiredAt: v.number(),
+    usedAt: v.optional(v.number()),
+    tradedToUserId: v.optional(v.id("users")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_type", ["userId", "itemType"])
+    .index("by_user_status", ["userId", "status"]),
+
+  // ─── Achievements ────────────────────────────────────────
+  // Hand-designed, earned from events. Each unlocks inventory
+  // items and/or avatar cosmetics.
+  achievements: defineTable({
+    userId: v.id("users"),
+    type: v.string(), // "first_v4", "streak_7", "boss_slayer", "explorer_5", etc.
+    metadata: v.optional(v.any()), // { grade?, gymCount?, streakDays?, ... }
+    itemsGranted: v.optional(v.array(v.string())), // Item types awarded
+    cosmeticGranted: v.optional(v.string()), // Avatar cosmetic unlocked
+    earnedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_type", ["userId", "type"]),
+
+  // ─── Avatar Gym Overrides ────────────────────────────────
+  // Per-gym appearance settings (e.g., harness at rope gym,
+  // no harness at bouldering gym).
+  avatarGymOverrides: defineTable({
+    userId: v.id("users"),
+    gymId: v.id("gyms"),
+    overrides: v.any(), // Partial avatar fields
+    lastUsedAt: v.number(),
+  })
+    .index("by_user_gym", ["userId", "gymId"]),
 
   // ─── Quest Matches (Post-Session) ───────────────────────
   questMatches: defineTable({

@@ -106,17 +106,16 @@ Every user gets a **persistent procedurally generated name** combining climbing/
 
 ### XP & Leveling
 
-XP mirrors real climbing effort — it rewards pushing your limits, not grinding easy routes.
+XP is tied to **absolute difficulty** — same for everyone. A V6 gives the same XP whether you're a beginner or expert. Based on research (Drummond & Popinga 2021), each V-grade step represents a **3.17x increase** in objective difficulty. We use this directly for XP scaling.
 
-**XP curve based on personal grade relativity:**
-- Routes **at or near your limit** → high XP (this is where growth happens)
-- Routes **1-2 grades below your max** → moderate XP (solid training)
-- Routes **3+ grades below your max** → minimal/no XP (warmups don't count)
-- Routes **above your previous max** → massive XP + grade breakthrough event
+**Why this works:**
+- 1 route at your grade ≈ 3 routes one grade below (research-backed)
+- Warmups are naturally insignificant — no explicit "you get less XP" rule needed
+- A V8 climber doing V4 warmups: each V4 is ~1% of a V8. Warmups don't matter.
 
-The system tracks your current max grade and calculates XP relative to that. As you improve, the same grades yield less XP — exactly like real climbing where a 5.10 stops feeling hard once you're projecting 5.12.
+**First session for experienced climbers:** Everyone starts at level 1. When you log your first session, you'll level up rapidly through the early levels. Wizard explains: "Because you're more advanced, you'll level up quickly at first."
 
-**Level** is derived from cumulative XP and is visible on your profile. Level should feel meaningful but not be the point — it's a fun side effect of climbing, not the reason you climb.
+**Leveling:** 2x cumulative XP per level, giving ~20+ meaningful levels with lots of small wins. The 2x multiplier is a tuning knob that can be adjusted post-launch without schema changes.
 
 ### Status Effects
 
@@ -135,6 +134,91 @@ Status effects are visible on your profile and add personality:
 **Party Bonus:**
 - Small XP multiplier when climbing with others in a session
 - Rewards the social behavior the app exists to encourage
+
+---
+
+## Route Logging & Boss System
+
+### Phased Approach
+- **v0 (launch):** Manual route logging — user selects grade, type, and gym. No route identity. Every logged climb includes optional difficulty rating (soft / on-grade / hard / very hard). Builds the habit and collects data.
+- **v1:** QR stickers on route tags (belay.quest/r/{routeId}). Scanning pre-fills route data. First scan creates route entity.
+- **v2:** NFC tags for faster interaction (works with gloves/chalk hands).
+
+### Difficulty Ratings
+Every logged climb can include a subjective difficulty rating relative to the stated grade. Aggregated ratings surface community consensus over time. Data is recency-weighted — older ratings decay naturally, handling gym route resets without manual flagging.
+
+### Boss System (v1+, requires route identity)
+- The boss is **per grade at a gym** — every climber at every level has a boss to chase
+- Boss designation comes from community difficulty ratings: the route rated hardest at a given grade becomes the boss
+- Defeating the boss (sending the hardest route at your grade) earns extra XP and a visual flair
+- Boss computation uses recency-weighted sliding window, recomputed periodically
+
+---
+
+## Achievements & Items
+
+### Achievements
+Hand-designed for v0 (~15-20 achievements). Each unlocks both a permanent inventory trophy and an optional avatar cosmetic. Categories:
+- **Climbing milestones:** First send at each grade, total sends milestones, grade breakthrough
+- **Persistence:** Tape milestones, sent a route after N+ attempts
+- **Boss slayer:** Defeated gym bosses across grades/gyms (v1+)
+- **Social:** Hosted N raids, met N strangers, climbed at N gyms with same person
+- **Consistency:** Streaks, session count milestones
+- **Explorer:** Climbed at N gyms, climbed in N grading systems
+
+### Climbing-Themed Inventory
+Items are things climbers actually use — not generic RPG potions. Per-item tracking with provenance.
+
+**Consumables:** Tape (earned from attempts at hard grades), chalk (earned from volume), liquid chalk (exceptional sessions).
+
+**Trophy items from achievements:** Carabiner (first session), quickdraw (first lead), brush (boss defeated), belay device (hosted N raids), rope (streak milestone), crash pad (bouldering milestone), hangboard (consistency), glowing climbing shoes (grade breakthrough).
+
+**Avatar cosmetics from achievements:** Crown/headband (boss), cape/chalk bag flair (streaks), glowing shoes (breakthrough), special harness color (social), aura effect (high-level milestones).
+
+---
+
+## Avatar System
+
+### Customizable Pixel-Art Avatar
+Every user has an avatar used for identification and RPG identity:
+- **Session view:** Stripped-down clothing/hair colors only — what someone would see at the gym. No cosmetics. Used for identification ("look for the red shirt").
+- **Profile view:** Full character with achievement cosmetics (wolf companion, glowing shoes, aura, etc.). Your RPG identity.
+
+### Customizable Attributes
+| Attribute | Options |
+|-----------|---------|
+| Hair/hat | Medium-length hair OR hat (two options, gender-neutral) |
+| Hair/hat color | Color picker |
+| Skin tone | 3 preset pixel tones |
+| Glasses | Yes/no + frame color |
+| Shirt color | Color picker |
+| Pants/shorts | Toggle + color picker |
+| Harness | Yes/no + color (boulderers might not wear one) |
+| Shoe color | Color picker |
+
+No gender selection, no body type options, no demographic signals. Focus is "what are you wearing today."
+
+### Per-Gym Defaults
+Avatar selections persist per gym (harness at rope gym, no harness at bouldering gym). First time at a gym inherits from your most recent defaults.
+
+### Session Check-In
+When a session goes active, the party leader gets a confirmation screen with their avatar (defaults from last session at this gym). Quick-tap adjustments, then confirm. Non-leaders can optionally update but aren't prompted.
+
+---
+
+## Hero Classes
+
+Auto-detected behavioral archetypes, assigned from event patterns after sufficient data. Visible on profile as a title. No gameplay impact — purely flavor and identity. Can shift over time.
+
+| Class | Signal | Vibe |
+|-------|--------|------|
+| **Grinder** | High session count, consistent attendance | Always at the gym. Doesn't skip weeks. |
+| **Sender** | High success rate on hard routes, frequent flash sends | Goes for the top. When they try, they send. |
+| **Projector** | Many attempts before sending, high tape count | Picks hard things and works them. Patient. |
+| **Explorer** | Many gyms visited, variety in grades/styles | Climbs everywhere. Breadth over depth. |
+| **Rally Captain** | Most raids hosted, most connections made | The social glue. Gets everyone together. |
+
+Computed periodically with hysteresis (won't flip from session to session). Requires minimum data threshold before first assignment. v1+ feature — needs real data to set meaningful thresholds.
 
 ---
 
@@ -308,15 +392,25 @@ What climbers actually use today: texting friends, Facebook groups, walking up t
 
 ## Open Questions
 
-1. **Competition integration** — Climbing comps use scorecards. Is there a way to import/interface with comp scoring? Research needed on formats (USAC, gym-specific). Future feature.
-2. **Party XP mechanics** — What triggers party XP? Completing a session together? Both sending the same route? Needs design work to feel earned, not automatic.
-3. **Capacity limits for Quest Board quests** — Creator-set (3-7 range) or fixed? Should it vary by session type (bouldering sessions can be bigger than rope climbing since you don't need a dedicated partner)?
-4. **Profile: "time climbing" field** — Exact format? Free text ("2 years"), range picker ("1-3 years"), or derived from app usage?
-5. **Connection removal edge cases** — Easy and silent (no notification). But what if someone you removed joins a session you're in via another person's invite? Do you see them? Can you block?
-6. **Session check-in message** — Is this a single message field, or a mini-chat within the session? Single message is simpler and less likely to become a messaging app.
-7. **Status effect duration** — How long do blessings last? How many sessions to clear a debuff? Needs tuning.
-8. **XP formula specifics** — Exact XP values per grade delta. How many levels? What do levels unlock (if anything)?
-9. **Wizard name and personality** — The wizard mascot needs a name. Should feel like a climbing-world wizard. Personality details TBD.
-10. ~~**Name reroll limits**~~ — **Resolved: unlimited rerolls.** Finding the perfect name is part of the fun.
-11. **Widget / ambient awareness** — Future feature. Home screen widget showing "friends climbing today."
-12. **Outdoor climbing support** — Explicitly out of scope for v1. Revisit based on community demand.
+1. **Competition integration** — Climbing comps use scorecards. Research needed on formats (USAC, gym-specific). Future feature.
+2. **Party XP trigger** — when exactly does party bonus apply? Simplest: any send logged during a session with 2+ people.
+3. **Connection removal edge cases** — removed connections can still appear in shared sessions. No blocking in v1.
+4. **Status effect duration** — How long do blessings/curses last? Start with 7 days and tune.
+5. **Wizard name and personality** — The wizard mascot needs a name. Personality details TBD.
+6. **Widget / ambient awareness** — Future feature. Home screen widget showing "friends climbing today."
+7. **Outdoor climbing support** — Explicitly out of scope for v1. Revisit based on community demand.
+8. **Attempt XP** — should attempts give XP? If so, what fraction of send XP? (~25% mentioned but not confirmed)
+9. **Level cap** — infinite levels that get exponentially harder, or a hard cap?
+10. **Boss reward design** — extra XP? Special item? Achievement? (v1+ when route identity exists)
+11. **Hero class thresholds** — exact behavioral thresholds for detection (needs real user data)
+12. **Hero class reveal** — revealed with fanfare, or quietly appears?
+13. **Avatar pixel art resolution** — 16x16, 24x24, or 32x32?
+14. **Auto-generated avatar** — do users who never customize get an avatar from name hash?
+15. **Full achievement list** — needs a design pass for all ~15-20 v0 achievements
+
+### Resolved (previously open)
+- ~~**Name reroll limits**~~ — Unlimited rerolls.
+- ~~**Session check-in message**~~ — Single message field, not a chat.
+- ~~**Capacity limits**~~ — Creator-set in 3-7 range. Soft cap.
+- ~~**XP formula**~~ — Universal absolute difficulty, 3.17x per grade (research-backed).
+- ~~**Profile: "time climbing"**~~ — Range picker ("1-3 years").

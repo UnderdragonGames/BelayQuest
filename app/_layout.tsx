@@ -3,18 +3,47 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { Platform } from "react-native";
+import { ConvexReactClient } from "convex/react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
 export { ErrorBoundary } from "expo-router";
 
 export const unstable_settings = {
-  initialRouteName: "(tabs)",
+  initialRouteName: "(authenticated)",
 };
 
 const convex = new ConvexReactClient(
   process.env.EXPO_PUBLIC_CONVEX_URL!,
   { unsavedChangesWarning: false }
 );
+
+// Platform-aware token storage: SecureStore on native, localStorage on web
+const storage =
+  Platform.OS === "web"
+    ? {
+        getItem: (key: string) => {
+          const value = localStorage.getItem(key);
+          return Promise.resolve(value);
+        },
+        setItem: (key: string, value: string) => {
+          localStorage.setItem(key, value);
+          return Promise.resolve();
+        },
+        removeItem: (key: string) => {
+          localStorage.removeItem(key);
+          return Promise.resolve();
+        },
+      }
+    : (() => {
+        const SecureStore = require("expo-secure-store");
+        return {
+          getItem: (key: string) => SecureStore.getItemAsync(key),
+          setItem: (key: string, value: string) =>
+            SecureStore.setItemAsync(key, value),
+          removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+        };
+      })();
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,24 +81,16 @@ export default function RootLayout() {
   }
 
   return (
-    <ConvexProvider client={convex}>
+    <ConvexAuthProvider client={convex} storage={storage}>
       <ThemeProvider value={belayQuestTheme}>
         <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
-            name="session/[id]"
-            options={{ presentation: "card", headerShown: false }}
+            name="(authenticated)"
+            options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="create/raid"
-            options={{ presentation: "modal", title: "Start a Raid" }}
-          />
-          <Stack.Screen
-            name="create/quest"
-            options={{ presentation: "modal", title: "Post to Quest Board" }}
-          />
+          <Stack.Screen name="(public)" options={{ headerShown: false }} />
         </Stack>
       </ThemeProvider>
-    </ConvexProvider>
+    </ConvexAuthProvider>
   );
 }

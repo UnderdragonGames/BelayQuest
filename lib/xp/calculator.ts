@@ -1,133 +1,123 @@
-import { gradeDelta, detectSystem } from "../grades/parser";
-
 /**
- * XP calculation based on grade relative to personal max.
+ * Universal XP system — 3.17x absolute-difficulty scaling.
  *
- * The harder the route relative to YOUR max, the more XP.
- * This mirrors real climbing — a 5.10 stops being hard once you climb 5.12.
- *
- * All values are initial tuning — expect adjustment after playtesting.
+ * Every grade has a fixed XP value regardless of the climber's level.
+ * Harder grades are worth exponentially more XP.
+ * Leveling uses a 2x cumulative curve.
  */
 
-// Base XP by grade delta (route grade - personal max grade)
-const XP_BY_DELTA: Record<number, number> = {
-  3: 200, // 3+ above max (exceptional breakthrough)
-  2: 175, // 2 above max
-  1: 150, // 1 above max (breakthrough)
-  0: 90, //  at max
-  [-1]: 50, // 1 below
-  [-2]: 25, // 2 below
-  [-3]: 10, // 3 below
-  // anything further below: 0
+// ─── Pre-computed XP by grade (3.17x per V-grade step) ──────────
+// V-Scale: 3.17x per step starting from VB=10
+// YDS: 3.17x per full grade, 1.33x per letter within a grade
+const GRADE_XP: Record<string, number> = {
+  // V-Scale
+  VB: 10,
+  V0: 32,
+  V1: 101,
+  V2: 319,
+  V3: 1012,
+  V4: 3207,
+  V5: 10167,
+  V6: 32228,
+  V7: 102163,
+  V8: 323857,
+  V9: 1026606,
+  V10: 3254341,
+  V11: 10316261,
+  V12: 32702547,
+  V13: 103667075,
+  V14: 328624548,
+  V15: 1041739817,
+  V16: 3302275220,
+  V17: 10468192448,
+
+  // YDS (3.17x per full grade, 1.33x per letter)
+  "5.5": 3,
+  "5.6": 10,
+  "5.7": 32,
+  "5.8": 101,
+  "5.9": 319,
+  "5.10a": 1012,
+  "5.10b": 1347,
+  "5.10c": 1793,
+  "5.10d": 2387,
+  "5.11a": 3207,
+  "5.11b": 4268,
+  "5.11c": 5681,
+  "5.11d": 7561,
+  "5.12a": 10167,
+  "5.12b": 13532,
+  "5.12c": 18013,
+  "5.12d": 23978,
+  "5.13a": 32228,
+  "5.13b": 42903,
+  "5.13c": 57106,
+  "5.13d": 76011,
+  "5.14a": 102163,
+  "5.14b": 135977,
+  "5.14c": 181050,
+  "5.14d": 240997,
+  "5.15a": 323857,
+  "5.15b": 431051,
+  "5.15c": 573738,
 };
 
-const BREAKTHROUGH_BONUS = 100; // Extra XP for surpassing your max
-const ATTEMPT_MULTIPLIER = 0.25; // Attempts earn 25% of send XP
-const PARTY_BONUS_MULTIPLIER = 0.15; // +15% XP when climbing with others
+const ATTEMPT_MULTIPLIER = 0.25;
+const PARTY_BONUS_MULTIPLIER = 0.15;
 
-interface XpCalculation {
+export interface XpCalculation {
   baseXp: number;
-  breakthroughBonus: number;
   partyBonus: number;
   totalXp: number;
-  isBreakthrough: boolean;
 }
 
 /**
- * Calculate XP for a single route.
- *
- * @param routeGrade - The grade of the route climbed (e.g., "5.11a" or "V6")
- * @param maxGrade - The user's current max grade in the same system
- * @param isSend - true if completed, false if attempt
- * @param inParty - true if climbing in a session with others
+ * Look up the absolute XP value for a grade.
+ * Throws on unknown grade — no fallbacks.
+ */
+export function xpForGrade(grade: string): number {
+  const xp = GRADE_XP[grade];
+  if (xp === undefined) {
+    throw new Error(`Unknown grade: ${grade}`);
+  }
+  return xp;
+}
+
+/**
+ * Calculate XP for a single climb.
  */
 export function calculateXp(
-  routeGrade: string,
-  maxGrade: string | undefined,
-  isSend: boolean,
+  grade: string,
+  type: "send" | "attempt",
   inParty: boolean
 ): XpCalculation {
-  // If no max grade set yet, treat any send as a breakthrough
-  if (!maxGrade) {
-    const baseXp = isSend ? 100 : 25;
-    const partyBonus = inParty ? Math.round(baseXp * PARTY_BONUS_MULTIPLIER) : 0;
-    return {
-      baseXp,
-      breakthroughBonus: isSend ? BREAKTHROUGH_BONUS : 0,
-      partyBonus,
-      totalXp: baseXp + (isSend ? BREAKTHROUGH_BONUS : 0) + partyBonus,
-      isBreakthrough: isSend,
-    };
-  }
-
-  // Both grades must be the same system
-  const routeSystem = detectSystem(routeGrade);
-  const maxSystem = detectSystem(maxGrade);
-  if (routeSystem !== maxSystem) {
-    // Cross-system comparison not supported — give base XP
-    return {
-      baseXp: isSend ? 50 : 12,
-      breakthroughBonus: 0,
-      partyBonus: 0,
-      totalXp: isSend ? 50 : 12,
-      isBreakthrough: false,
-    };
-  }
-
-  const delta = gradeDelta(routeGrade, maxGrade);
-
-  // Look up base XP, clamping delta to known range
-  const clampedDelta = Math.max(-3, Math.min(3, delta));
-  const rawBaseXp = XP_BY_DELTA[clampedDelta] ?? 0;
-
-  // Anything more than 3 below max: 0 XP
-  const baseXp = delta < -3 ? 0 : rawBaseXp;
-
-  // Apply attempt multiplier
-  const adjustedBase = isSend
-    ? baseXp
-    : Math.round(baseXp * ATTEMPT_MULTIPLIER);
-
-  // Breakthrough bonus (only on sends above current max)
-  const isBreakthrough = isSend && delta > 0;
-  const breakthroughBonus = isBreakthrough ? BREAKTHROUGH_BONUS : 0;
-
-  // Party bonus
-  const subtotal = adjustedBase + breakthroughBonus;
-  const partyBonus = inParty
-    ? Math.round(subtotal * PARTY_BONUS_MULTIPLIER)
-    : 0;
-
+  const raw = xpForGrade(grade);
+  const baseXp =
+    type === "attempt" ? Math.round(raw * ATTEMPT_MULTIPLIER) : raw;
+  const partyBonus = inParty ? Math.round(baseXp * PARTY_BONUS_MULTIPLIER) : 0;
   return {
-    baseXp: adjustedBase,
-    breakthroughBonus,
+    baseXp,
     partyBonus,
-    totalXp: subtotal + partyBonus,
-    isBreakthrough,
+    totalXp: baseXp + partyBonus,
   };
 }
 
 /**
  * Calculate level from total XP.
- * Level curve: each level requires progressively more XP.
- * Level 1 = 0 XP, Level 2 = 100 XP, Level 3 = 250 XP, etc.
- *
- * Formula: XP needed for level N = 50 * N * (N - 1)
- * This means: Level 5 = 1000 XP, Level 10 = 4500 XP, Level 20 = 19000 XP
+ * 2x cumulative curve: Level N threshold = 10 * 2^(N-2).
+ * Level 1 = 0 XP, Level 2 = 10 XP, Level 3 = 20 XP, Level 4 = 40 XP, etc.
  */
 export function levelFromXp(totalXp: number): number {
-  // Solve: 50 * N * (N-1) <= totalXp
-  // Quadratic: N^2 - N - totalXp/50 <= 0
-  // N = (1 + sqrt(1 + 4*totalXp/50)) / 2
-  const level = Math.floor((1 + Math.sqrt(1 + (4 * totalXp) / 50)) / 2);
-  return Math.max(1, level);
+  if (totalXp < 10) return 1;
+  return Math.floor(Math.log2(totalXp / 10) + 2);
 }
 
 /**
  * XP required to reach a specific level.
  */
 export function xpForLevel(level: number): number {
-  return 50 * level * (level - 1);
+  if (level <= 1) return 0;
+  return 10 * Math.pow(2, level - 2);
 }
 
 /**

@@ -94,6 +94,30 @@ export const copy = {
   "character.max_boulder": "Max Boulder",
   "character.recent_sends": "Recent Sends",
   "character.grade_history": "Grade History",
+  "character.recent": "Recent Sends",
+  "character.sessions": "Total Sessions",
+  "character.routes": "Routes Logged",
+  "character.max_route": "Max Route",
+
+  // ─── Route Logging ──────────────────────────────────────
+  "log.title": "Log Climb",
+  "log.send": "Send",
+  "log.attempt": "Attempt",
+  "log.soft": "Soft",
+  "log.on_grade": "On Grade",
+  "log.hard": "Hard",
+  "log.very_hard": "Very Hard",
+  "log.button": "Log It",
+  "log.success": "+{amount} XP",
+  "log.select_grade": "Select a grade",
+  "log.difficulty": "How did it feel?",
+
+  // ─── Session Events ────────────────────────────────────
+  "event.volume_pr": "Volume PR: {count}x {grade}!",
+  "event.tape_earned": "Tape earned!",
+  "event.grade_breakthrough": "Grade breakthrough: {grade}!",
+  "session.sends": "Sends",
+  "session.no_sends": "No climbs logged yet",
 
   // ─── Empty States ────────────────────────────────────────
   "empty.quests": "No quests ahead.",
@@ -112,6 +136,37 @@ export const copy = {
   "action.take_over": "Take Over",
   "action.leave": "Leave",
   "action.done": "Done",
+
+  // ─── Create Raid Flow ───────────────────────────────────
+  "raid.step.gym": "Choose Your Dungeon",
+  "raid.step.time": "Set the Hour",
+  "raid.step.invite": "Rally Your Party",
+  "raid.step.confirm": "Confirm the Raid",
+  "raid.gym.empty": "No favorite gyms yet. Add some in Settings!",
+  "raid.time.today": "Today",
+  "raid.time.tomorrow": "Tomorrow",
+  "raid.time.pick_date": "Pick a Date",
+  "raid.invite.guilds": "Guilds",
+  "raid.invite.connections": "Connections",
+  "raid.invite.add_phone": "Add by Phone Number",
+  "raid.invite.none_selected": "No one selected yet.",
+  "raid.confirm.gym": "Dungeon",
+  "raid.confirm.time": "Time",
+  "raid.confirm.party": "Party",
+  "raid.confirm.send": "Send Invites",
+  "raid.confirm.note_placeholder": "Add a note (optional)",
+  "raid.confirm.members_count": "{count} adventurers",
+  "raid.step.next": "Next",
+  "raid.step.back": "Back",
+  "raid.quickraid.no_guild": "Create a guild first in the Party tab.",
+  "raid.quickraid.no_gym": "Add a favorite gym first in Settings.",
+
+  // ─── Upcoming Sessions ─────────────────────────────────
+  "upcoming.accept": "Join",
+  "upcoming.decline": "Pass",
+  "upcoming.invited": "Invited",
+  "upcoming.accepted": "Going",
+  "upcoming.you_plus": "You + {count} others",
 
   // ─── SMS Invite ──────────────────────────────────────────
   "sms.invite":

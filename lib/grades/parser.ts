@@ -77,7 +77,8 @@ const V_GRADES = [
   "V17",
 ] as const;
 
-export type GradeSystem = "yds" | "v_scale";
+// font, french, and gym_color validation deferred to v1
+export type GradeSystem = "yds" | "v_scale" | "font" | "french" | "gym_color";
 
 /**
  * Detect the grading system from a grade string.

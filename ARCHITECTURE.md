@@ -50,12 +50,13 @@ BelayQuest/
 │   ├── auth.ts              # Convex Auth configuration
 │   ├── sessions.ts          # Session (Raid/Quest) mutations & queries
 │   ├── connections.ts       # Connection/guild mutations & queries
-│   ├── progression.ts       # XP, levels, status effects
+│   ├── progression.ts       # XP, levels, status effects, route logging, events
+│   ├── inventory.ts         # Item management (use, trade)
 │   ├── gyms.ts              # Gym database queries
 │   ├── notifications.ts     # Push notification actions
 │   ├── sms.ts               # Twilio SMS actions
 │   ├── http.ts              # HTTP actions (universal links, web pages)
-│   └── crons.ts             # Scheduled jobs (session lifecycle, curse expiry)
+│   └── crons.ts             # Scheduled jobs (session lifecycle, curse expiry, boss/hero recompute)
 │
 ├── lib/
 │   ├── copy/                # Centralized copy/strings
@@ -66,7 +67,7 @@ BelayQuest/
 │   │   ├── nouns.ts         # Word list
 │   │   └── generator.ts     # Name generation logic
 │   ├── xp/                  # XP calculation logic
-│   │   └── calculator.ts    # Grade-relative XP formula
+│   │   └── calculator.ts    # Universal absolute-difficulty XP formula
 │   └── grades/              # Climbing grade utilities
 │       └── parser.ts        # Grade parsing, comparison, ranges
 │
@@ -87,202 +88,43 @@ BelayQuest/
 
 ## Data Model (Convex Schema)
 
-### Core Tables
+### Tables
 
-```typescript
-// convex/schema.ts
+**users** — Player identity and cached progression stats. Extends Convex Auth with app-specific fields including avatar defaults, hero class, volume PRs, and pending invite tracking.
 
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+**gyms** — Climbing gym directory seeded from CBJ data. Supports search and geo-based lookup.
 
-export default defineSchema({
-  // ─── Users ───────────────────────────────────────────────
-  users: defineTable({
-    // Convex Auth links to this via auth subject
-    phone: v.string(),                    // E.164 format, indexed
-    generatedName: v.string(),            // "Crimson Gecko", unique
-    climbingStyles: v.array(v.string()),  // ["boulder", "lead", "top_rope"]
-    gradeRangeRoute: v.optional(v.object({
-      min: v.string(),                    // "5.10a"
-      max: v.string(),                    // "5.11+"
-    })),
-    gradeRangeBoulder: v.optional(v.object({
-      min: v.string(),                    // "V4"
-      max: v.string(),                    // "V6"
-    })),
-    yearsClimbing: v.optional(v.string()), // "1-3 years"
-    level: v.number(),                     // Derived from XP, cached
-    totalXp: v.number(),                   // Running total (cache; source of truth is ledger)
-    currentStatus: v.optional(v.object({
-      effect: v.string(),                 // "Blessed", "Cursed", etc.
-      type: v.union(v.literal("buff"), v.literal("debuff")),
-      expiresAt: v.number(),              // Timestamp
-    })),
-    maxGradeRoute: v.optional(v.string()),   // Highest sent route grade
-    maxGradeBoulder: v.optional(v.string()), // Highest sent boulder grade
-    favoriteGyms: v.array(v.id("gyms")),
-    expoPushToken: v.optional(v.string()),   // For push notifications
-    onboardingComplete: v.boolean(),
-  })
-    .index("by_phone", ["phone"])
-    .index("by_generatedName", ["generatedName"]),
+**gymGradeSystems** — Gym-specific grading circuits (e.g., color systems). Standard systems (YDS, V Scale, Font, French) are handled in code; this table stores gym-custom grades with V-grade range mappings for XP calculation.
 
-  // ─── Gyms ────────────────────────────────────────────────
-  gyms: defineTable({
-    name: v.string(),
-    address: v.string(),
-    city: v.string(),
-    state: v.string(),
-    country: v.string(),
-    latitude: v.number(),
-    longitude: v.number(),
-    source: v.string(),                   // "cbj_seed", "user_submitted"
-    verified: v.boolean(),
-  })
-    .index("by_city_state", ["state", "city"])
-    .searchIndex("search_name", { searchField: "name" }),
+**routes** — Identified route entities for QR/NFC scanning (v1+). Not populated in v0 (manual logging has no route identity). Includes cached community difficulty stats and boss designation.
 
-  // ─── Sessions (Raids + Quests) ───────────────────────────
-  sessions: defineTable({
-    type: v.union(v.literal("raid"), v.literal("quest")),
-    creatorId: v.id("users"),
-    leaderId: v.id("users"),              // Party leader (can transfer)
-    gymId: v.id("gyms"),
-    scheduledAt: v.number(),              // Timestamp
-    note: v.optional(v.string()),         // "Looking for lead belay"
-    checkInMessage: v.optional(v.string()), // "Blue shirt, slab wall"
-    status: v.union(
-      v.literal("draft"),                // Quick Raid pre-confirmation, no invites sent
-      v.literal("open"),                 // Accepting joins, invites sent
-      v.literal("active"),              // Session time arrived
-      v.literal("completed"),           // Session ended
-      v.literal("dissolved"),           // No leader, auto-dissolved
-    ),
-    // Quest-specific fields
-    capacity: v.optional(v.number()),     // Soft cap (3-7)
-    climbingType: v.optional(v.string()), // "boulder", "lead", "top_rope", "any"
-    gradeRange: v.optional(v.object({
-      min: v.string(),
-      max: v.string(),
-    })),
-    dissolveAt: v.optional(v.number()),   // Auto-dissolve timestamp (when leader deserts)
-  })
-    .index("by_gym_status", ["gymId", "status"])
-    .index("by_status_scheduledAt", ["status", "scheduledAt"])
-    .index("by_creator", ["creatorId"]),
+**sessions** — Raids and Quests. Polymorphic table with `type` discriminator. Includes `shortCode` for universal link routing.
 
-  // ─── Session Members ─────────────────────────────────────
-  sessionMembers: defineTable({
-    sessionId: v.id("sessions"),
-    userId: v.id("users"),
-    status: v.union(
-      v.literal("invited"),              // Received invite, hasn't responded
-      v.literal("accepted"),             // Confirmed attending
-      v.literal("declined"),             // Explicitly declined
-      v.literal("no_show_pending"),      // Session passed, no check-in
-      v.literal("attended"),             // Confirmed attendance
-      v.literal("no_show"),              // Confirmed no-show (honor system)
-    ),
-    invitedBy: v.id("users"),            // Who invited this person
-    respondedAt: v.optional(v.number()),
-    checkedIn: v.boolean(),              // Logged a send or tapped "I was here"
-  })
-    .index("by_session", ["sessionId"])
-    .index("by_user", ["userId"])
-    .index("by_session_user", ["sessionId", "userId"]),
+**sessionMembers** — Per-user session participation. Tracks invite/attendance status and stores an `avatarSnapshot` at session time for identification.
 
-  // ─── Connections ─────────────────────────────────────────
-  connections: defineTable({
-    userId: v.id("users"),               // The user who owns this connection
-    connectedUserId: v.id("users"),      // The person they're connected to
-    nickname: v.optional(v.string()),     // User-local display name
-    source: v.union(
-      v.literal("phone"),               // Added by phone number
-      v.literal("quest_match"),          // Mutual "climb again" after quest
-      v.literal("invite_link"),          // Joined via SMS invite link
-    ),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_connected", ["userId", "connectedUserId"]),
+**connections** — Directional friend connections with user-local nicknames. Sources: phone, quest match, invite link.
 
-  // ─── Guilds ──────────────────────────────────────────────
-  guilds: defineTable({
-    ownerId: v.id("users"),
-    name: v.string(),                    // "Tuesday Crew"
-    isDefault: v.boolean(),              // Used for quick raid
-  })
-    .index("by_owner", ["ownerId"]),
+**guilds / guildMembers** — Named groups for quick raid invites.
 
-  guildMembers: defineTable({
-    guildId: v.id("guilds"),
-    userId: v.id("users"),               // The connected user in this guild
-  })
-    .index("by_guild", ["guildId"])
-    .index("by_user", ["userId"]),
+**sends** — Every climb logged (sends and attempts). Supports multiple grading systems (yds, v_scale, font, french, gym_color). Includes optional `routeId` (null in v0, links to route entities in v1+) and subjective `difficultyRating`.
 
-  // ─── Sends (Route Log) ──────────────────────────────────
-  sends: defineTable({
-    userId: v.id("users"),
-    sessionId: v.optional(v.id("sessions")), // null = solo session
-    gymId: v.id("gyms"),
-    grade: v.string(),                   // "5.11+", "V6"
-    gradeSystem: v.union(v.literal("yds"), v.literal("v_scale")),
-    type: v.union(v.literal("send"), v.literal("attempt")),
-    xpAwarded: v.number(),               // Calculated at log time
-    climbedAt: v.number(),               // Timestamp
-  })
-    .index("by_user", ["userId"])
-    .index("by_session", ["sessionId"])
-    .index("by_user_date", ["userId", "climbedAt"]),
+**xpLedger** — Immutable ledger for all XP changes. Sources include send, attempt, party_bonus, grade_breakthrough, boss_defeat, volume_pr, achievement, and adjustment. `users.totalXp` is a cached sum.
 
-  // ─── XP Ledger ───────────────────────────────────────────
-  // Source of truth for all XP. users.totalXp is a cached sum.
-  // Ledger enables future economy features (rewards, redemption).
-  xpLedger: defineTable({
-    userId: v.id("users"),
-    amount: v.number(),                  // Can be negative (future: redemptions)
-    source: v.union(
-      v.literal("send"),                // Route completion
-      v.literal("attempt"),             // Attempt XP
-      v.literal("party_bonus"),          // Session with others
-      v.literal("grade_breakthrough"),   // New max grade
-      v.literal("adjustment"),           // Manual/system adjustment
-    ),
-    sourceId: v.optional(v.string()),    // Reference to send, session, etc.
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_date", ["userId", "createdAt"]),
+**events** — Significant accomplishments computed from sends/sessions (1-3 per session). Flexible `type` string (grade_breakthrough, volume_pr, boss_defeat, level_up, tape_earned, etc.). Drives achievement detection, hero class computation, and the "recent accomplishments" timeline.
 
-  // ─── Quest Matches (Post-Session) ───────────────────────
-  questMatches: defineTable({
-    sessionId: v.id("sessions"),
-    fromUserId: v.id("users"),
-    toUserId: v.id("users"),
-    response: v.union(
-      v.literal("pending"),
-      v.literal("yes"),
-      v.literal("no"),
-    ),
-    respondedAt: v.optional(v.number()),
-  })
-    .index("by_session", ["sessionId"])
-    .index("by_to_user", ["toUserId"]),
+**inventoryItems** — Per-item tracking with provenance. Each item is an individual row (not quantity counters) enabling trading, gifting, and item history. Climbing-themed: tape, chalk, carabiners, brushes, etc.
 
-  // ─── Pending Invites (Phone Number) ──────────────────────
-  // For users invited by phone who don't have accounts yet
-  pendingInvites: defineTable({
-    phone: v.string(),                   // Phone number of invitee
-    sessionId: v.id("sessions"),
-    invitedBy: v.id("users"),
-    smsMessageId: v.optional(v.string()), // Twilio message SID
-    createdAt: v.number(),
-  })
-    .index("by_phone", ["phone"])
-    .index("by_session", ["sessionId"]),
-});
-```
+**achievements** — Hand-designed accomplishments earned from events. Each unlocks inventory items and/or avatar cosmetics.
+
+**avatarGymOverrides** — Per-gym avatar appearance settings (e.g., harness at rope gym, no harness at bouldering gym).
+
+**questMatches** — Post-session "climb again?" mutual matching for Quest Board sessions.
+
+**pendingInvites** — Phone-number invites for users who don't have accounts yet. Resolved on signup.
+
+### Full Schema
+
+See `convex/schema.ts` for the authoritative schema definition.
 
 ### Key Design Decisions
 
@@ -300,6 +142,16 @@ export default defineSchema({
 **Sessions table is polymorphic:** Raids and Quests share a table with a `type` discriminator. Quest-specific fields are optional. This simplifies queries that span both types (e.g., "all upcoming sessions for this user").
 
 **Soft cap enforcement:** Quest capacity is stored but not enforced with hard constraints. The mutation checks count and warns but allows overflow. No race condition complexity.
+
+**Universal XP (absolute difficulty):** XP is tied to absolute grade difficulty, same for everyone. A V6 gives the same XP whether you're a beginner or expert. Warmups become naturally insignificant at high levels — emergent property, not an explicit penalty. Avoids "your V4 was worth less because you're strong" unfairness.
+
+**Events as narrative layer:** Events are separate from sends (raw climb data) and xpLedger (XP accounting). Sends are high-volume granular data; events are low-volume celebrations. Adding new event types is just a string addition — no schema migration, no sends table pollution.
+
+**Per-item inventory:** Individual rows per item (not quantity counters) because each item has provenance — which event/achievement granted it, when it was used, who it was traded to. Trading is just updating `userId` + status. More rows but each is tiny, and the flexibility is worth it.
+
+**Avatar session/profile split:** Session view shows practical clothing colors only (for identification at the gym). Profile view adds fantasy cosmetics (glowing shoes, wolf companion, aura). A crown in session view could be mistaken for a real item, so cosmetics are excluded from session context.
+
+**Forward-compatible route logging:** v0 logs climbs without route identity (`routeId: null`). When QR/NFC arrives in v1, the same sends table gains route links. Existing data can be retroactively linked if routes are identified.
 
 ---
 
@@ -328,16 +180,22 @@ Convex Queries (real-time):
 └── sessions.membersForSession(sessionId)   # Live attendee list
 ```
 
-### Progression
+### Progression & Route Logging
 
 ```
 Convex Mutations:
-├── progression.logSend(sessionId?, gymId, grade, gradeSystem, type)
-│   → Calculates XP based on grade vs. personal max
-│   → Creates xpLedger entry
+├── progression.logClimb(sessionId?, gymId, grade, gradeSystem, type, difficultyRating?, routeId?)
+│   → Replaces logSend — handles both sends and attempts
+│   → Calculates XP based on absolute grade difficulty (universal, not personal)
+│   → Creates sends row + xpLedger entry
 │   → Updates user.totalXp cache
-│   → Checks for grade breakthrough → applies buff status
+│   → Fires events inline:
+│     → Checks for grade breakthrough → fires event + applies buff status
+│     → Checks for volume PR at this grade → fires event
+│     → Checks for boss defeat (v1+, requires routeId) → fires event
+│     → Checks for level-up → fires event
 │   → If in session with others → applies party bonus
+│   → If attempt at/near max grade → grants tape item
 │
 ├── progression.applyNoShowCurse(userId)
 │   → Random debuff selection
@@ -351,25 +209,85 @@ Convex Queries:
 └── progression.gradeHistory(userId)        # For the graph
 ```
 
+### Achievements & Hero Classes
+
+```
+Convex Mutations/Queries:
+├── progression.checkAchievements(userId, sessionId?)
+│   → Scans recent events after each session
+│   → Awards achievements + grants inventory items / avatar cosmetics
+│   → ~15-20 hand-designed achievements in v0
+│
+├── progression.recomputeHeroClass(userId)
+│   → Periodic recomputation from event patterns (cron or post-session)
+│   → Classes: grinder, sender, projector, explorer, rally_captain
+│   → Requires minimum data threshold before assigning
+│   → Hysteresis: sustained pattern change required to flip classes
+│
+├── inventory.use(itemId)
+│   → Marks item as used, applies effect
+│
+└── inventory.myItems(userId)
+    → Returns held items grouped by type
+```
+
+### Avatar
+
+```
+Convex Mutations:
+├── users.updateAvatarDefaults(avatarFields)
+│   → Updates user.avatarDefaults
+│
+└── users.updateAvatarGymOverride(gymId, partialAvatarFields)
+    → Upserts avatarGymOverrides for this user+gym
+```
+
 ### XP Calculation
 
 ```typescript
 // lib/xp/calculator.ts
 //
-// XP is relative to your personal max grade.
-// The delta between the route grade and your max determines XP.
+// XP is tied to absolute difficulty — same for everyone.
+// Based on Drummond & Popinga (2021): each V-grade step ≈ 3.17x
+// increase in objective difficulty.
 //
-// Grade delta (route vs max):  XP awarded:
-//   +1 or more (new PR)        150-200 + breakthrough bonus (100)
-//   0 (at your max)            80-100
-//   -1                         40-60
-//   -2                         15-25
-//   -3 or below                0-5
+// V-Scale XP:
+//   VB       10
+//   V0       32
+//   V1      101
+//   V2      319
+//   V3    1,012
+//   V4    3,207
+//   V5   10,167
+//   V6   32,228
+//   V7  102,163
+//   V8  323,857
+//   V9  1,026,607
 //
-// Attempts award ~25% of send XP at same grade.
+// YDS (3.17x per full grade, ⁴√3.17 ≈ 1.33x per letter subdivision):
+//   5.6       10
+//   5.7       32
+//   5.8      101
+//   5.9      319
+//   5.10a  1,012
+//   5.10b  1,347
+//   5.10c  1,793
+//   5.10d  2,387
+//   5.11a  3,207
+//   5.11b  4,269
+//   5.11c  5,683
+//   5.11d  7,564
+//   5.12a 10,167
+//
+// Gym color grades: XP uses the midpoint V-grade mapping from gymGradeSystems.
+//   e.g., BP Purple (V2-V4, midpoint V3) → 1,012 XP
+//
+// Leveling: 2x cumulative XP per level (~20+ meaningful levels, tunable).
+//   Level 1 = 0 XP, Level 2 = 10, Level 3 = 20, Level 4 = 40, ...
+//   A V4 climber reaches ~level 11 in their first session.
+//
+// Attempts: XP treatment TBD (open question — ~25% of send XP mentioned but not confirmed).
 // Party bonus: +15% XP when in a session with others.
-//
-// All values are configurable and will be tuned during testing.
 ```
 
 ### Connections & Guilds
@@ -469,6 +387,16 @@ Convex Crons:
 │
 ├── Every 1 hr:   clearExpiredStatuses()
 │   → Remove expired buff/debuff status effects from users
+│
+├── Every 1 hr:   recomputeBossDesignations()
+│   → Recency-weighted difficulty ratings per gym per grade
+│   → Updates routes.difficultyStats.isBoss flag
+│   → Requires minimum rating threshold before crowning a boss
+│
+├── Every 6 hrs:  recomputeHeroClasses()
+│   → Scans recent events for active users
+│   → Applies hysteresis (sustained pattern change required)
+│   → Updates users.heroClass
 │
 └── Daily:        cleanupOldSessions()
     → Archive sessions older than 30 days
@@ -731,10 +659,11 @@ Copy system enables this with zero architecture changes:
 ### In Scope
 - [ ] Convex backend with full schema
 - [ ] Convex Auth with phone/SMS OTP
-- [ ] Onboarding flow (wizard-guided, 4 steps)
+- [ ] Onboarding flow (wizard-guided, 4 steps + calibration)
 - [ ] Procedural name generation (unlimited reroll)
 - [ ] Gym database (CBJ seed data)
 - [ ] Gym favoriting + search
+- [ ] Gym grade systems (color circuits via support submission)
 - [ ] Create Raid (full flow + quick raid one-tap)
 - [ ] Create Quest (post to Quest Board)
 - [ ] Quest Board (browse by favorited gyms, grade filter)
@@ -747,14 +676,18 @@ Copy system enables this with zero architecture changes:
 - [ ] Connections (add by phone, quest match)
 - [ ] Guilds (create, manage, set default for quick raid)
 - [ ] Nicknames (user-local)
-- [ ] Send logging (live during session + post-session)
-- [ ] XP system (grade-relative, ledger-based)
+- [ ] Route logging with difficulty rating (manual, v0 — no route identity)
+- [ ] XP system (universal absolute difficulty, ledger-based)
 - [ ] Levels + status effects (buffs on breakthrough, debuffs on no-show)
+- [ ] Events system (grade breakthrough, volume PR, level up, tape earned)
+- [ ] Inventory system (tape from attempts, trophy items from achievements)
+- [ ] Achievements (hand-designed, ~15-20)
+- [ ] Avatar appearance picker (customizable pixel art, per-gym overrides)
 - [ ] Honor-system no-show detection (Quest sessions only)
 - [ ] SMS invites via Twilio
 - [ ] Universal links (Convex HTTP actions)
 - [ ] Session web page (read-only, no app required)
-- [ ] Character screen (stats, sends, grade history)
+- [ ] Character screen (stats, sends, grade history, hero class, inventory, achievements)
 - [ ] Centralized copy system
 - [ ] EAS internal distribution
 
@@ -772,12 +705,20 @@ Copy system enables this with zero architecture changes:
 - User blocking
 - Account deletion flow
 - Analytics / telemetry
+- QR/NFC route scanning (requires gym partnerships, v1+)
+- Boss system (requires route identity, v1+)
+- Hero classes (auto-detected, needs data first — v1+)
+- Item trading/gifting
+- Data-driven achievements
 
 ### Open Questions Remaining
-1. **XP formula tuning** — exact values need playtesting with real sessions
+1. **Attempt XP** — should attempts give XP? If so, what fraction? (~25% mentioned but not confirmed)
 2. **Status effect duration** — how long do blessings/curses last? Start with 7 days and tune.
 3. **Party XP trigger** — when exactly does party bonus apply? Simplest: any send logged during a session with 2+ people.
 4. **Wizard name** — the mascot needs a name
-5. **Session check-in message** — single message field (not a chat). Confirmed.
+5. **Level cap** — infinite levels that get exponentially harder, or a cap?
 6. **Connection removal edge cases** — removed connections can still appear in shared sessions via others' invites. No blocking in v1.
-7. **Capacity for Quest Board quests** — creator-set in 3-7 range. Soft cap (can overflow slightly).
+7. **Boss reward design** — extra XP? Special item? Achievement? (for v1+ when route identity exists)
+8. **Hero class thresholds** — exact behavioral thresholds for class detection (needs real data)
+9. **Avatar pixel art resolution** — 16x16, 24x24, or 32x32?
+10. **Unsupported grading systems** — how to handle users at launch who climb in systems we don't support
