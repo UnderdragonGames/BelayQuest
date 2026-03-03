@@ -1,6 +1,10 @@
 import { Stack } from "expo-router";
 import { AuthGate } from "../../components/AuthGate";
 
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
+
 export default function AuthenticatedLayout() {
   return (
     <AuthGate>
