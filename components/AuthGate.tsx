@@ -14,6 +14,7 @@ import {
 import { useConvexAuth } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { router } from "expo-router";
+import { LandingPage } from "./LandingPage";
 
 type AuthStep = "phone" | "code";
 
@@ -86,9 +87,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // Web: show "Get the App" instead of phone auth
+  // Web: show parallax landing page instead of phone auth
   if (Platform.OS === "web") {
-    return <GetTheApp />;
+    return <LandingPage />;
   }
 
   const handleSendCode = async () => {
