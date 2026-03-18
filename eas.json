@@ -11,14 +11,26 @@
         "simulator": true
       }
     },
+    "development-device": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://incredible-eel-124.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://incredible-eel-124.convex.site"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://incredible-eel-124.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://incredible-eel-124.convex.site"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }
@@ -27,8 +39,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
+        "ascAppId": "6760431267",
+        "appleTeamId": "JD2G8378HZ"
       }
     }
   }
