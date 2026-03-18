@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Pressable,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -11,6 +10,10 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { t } from "@/lib/copy/en";
 import { generateName } from "@/lib/names/generator";
+import { COLORS } from "@/lib/theme";
+import { ParchmentPanel } from "@/components/ParchmentPanel";
+import { StoneButton } from "@/components/StoneButton";
+import { Avatar } from "@/components/Avatar";
 
 export default function NameScreen() {
   const router = useRouter();
@@ -25,7 +28,7 @@ export default function NameScreen() {
   const handleConfirm = useCallback(() => {
     if (isAvailable) {
       router.push({
-        pathname: "/(onboarding)/grades",
+        pathname: "/(onboarding)/avatar",
         params: { name },
       });
     }
@@ -33,15 +36,13 @@ export default function NameScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Wizard area — top ~30% */}
+      {/* Wizard area */}
       <View style={styles.wizardArea}>
-        <View style={styles.wizardAvatar}>
-          <Text style={styles.wizardEmoji}>🧙</Text>
-        </View>
-        <View style={styles.speechBubble}>
-          <Text style={styles.speechText}>{t("wizard.welcome")}</Text>
+        <Avatar seed="wizard" size={78} />
+        <ParchmentPanel style={styles.speechBubble}>
           <View style={styles.speechTail} />
-        </View>
+          <Text style={styles.speechText}>{t("wizard.welcome")}</Text>
+        </ParchmentPanel>
       </View>
 
       {/* Content area */}
@@ -49,30 +50,21 @@ export default function NameScreen() {
         <Text style={styles.nameDisplay}>{name}</Text>
 
         {isAvailable === undefined ? (
-          <ActivityIndicator color="#f4a261" style={styles.loader} />
+          <ActivityIndicator color={COLORS.primary} style={styles.loader} />
         ) : isAvailable === false ? (
           <Text style={styles.takenText}>Name taken — reroll!</Text>
         ) : (
-          <Text style={styles.availableText}>Name available</Text>
+          <Text style={styles.availableText}>Name available ✓</Text>
         )}
 
         <View style={styles.buttonRow}>
-          <Pressable style={styles.rerollButton} onPress={handleReroll}>
-            <Text style={styles.rerollButtonText}>{t("wizard.reroll")}</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.confirmButton,
-              (!isAvailable) && styles.buttonDisabled,
-            ]}
-            onPress={handleConfirm}
-            disabled={!isAvailable}
-          >
-            <Text style={styles.confirmButtonText}>
-              {t("wizard.accept_name")}
-            </Text>
-          </Pressable>
+          <View style={{ opacity: isAvailable ? 1 : 0.4 }}>
+            <StoneButton
+              label={t("wizard.accept_name")}
+              onPress={handleConfirm}
+            />
+          </View>
+          <StoneButton label={t("wizard.reroll")} onPress={handleReroll} />
         </View>
       </View>
     </View>
@@ -82,37 +74,18 @@ export default function NameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.bg,
   },
   // ─── Wizard Area ──────────────────────────────────────
   wizardArea: {
-    flex: 0.3,
+    flex: 0.35,
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 60,
     paddingHorizontal: 24,
-  },
-  wizardAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#16213e",
-    borderWidth: 2,
-    borderColor: "#2a2a4a",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  wizardEmoji: {
-    fontSize: 40,
+    gap: 12,
   },
   speechBubble: {
-    backgroundColor: "#16213e",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#2a2a4a",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
     maxWidth: "90%",
     position: "relative",
   },
@@ -129,70 +102,49 @@ const styles = StyleSheet.create({
     borderBottomWidth: 8,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderBottomColor: "#2a2a4a",
+    borderBottomColor: "#5a4230",
   },
   speechText: {
-    color: "#eaeaea",
-    fontSize: 15,
-    lineHeight: 22,
+    fontFamily: "VT323",
+    color: COLORS.bg,
+    fontSize: 18,
+    lineHeight: 24,
     textAlign: "center",
   },
   // ─── Content Area ─────────────────────────────────────
   contentArea: {
-    flex: 0.7,
+    flex: 0.65,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
+    gap: 8,
   },
   nameDisplay: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#f4a261",
-    marginBottom: 12,
+    fontFamily: "VT323",
+    fontSize: 40,
+    color: COLORS.primary,
     textAlign: "center",
+    marginBottom: 4,
   },
   loader: {
-    marginBottom: 32,
+    marginBottom: 16,
   },
   takenText: {
-    color: "#e76f51",
-    fontSize: 14,
-    marginBottom: 32,
+    fontFamily: "VT323",
+    color: COLORS.danger,
+    fontSize: 18,
+    marginBottom: 16,
   },
   availableText: {
-    color: "#666680",
-    fontSize: 14,
-    marginBottom: 32,
+    fontFamily: "VT323",
+    color: COLORS.success,
+    fontSize: 18,
+    marginBottom: 16,
   },
   buttonRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  rerollButton: {
-    backgroundColor: "#16213e",
-    borderWidth: 2,
-    borderColor: "#f4a261",
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  rerollButtonText: {
-    color: "#f4a261",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  confirmButton: {
-    backgroundColor: "#f4a261",
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  confirmButtonText: {
-    color: "#1a1a2e",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.4,
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 8,
   },
 });

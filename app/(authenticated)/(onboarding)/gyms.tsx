@@ -12,6 +12,10 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { t } from "@/lib/copy/en";
 import type { Id } from "@/convex/_generated/dataModel";
+import { COLORS } from "@/lib/theme";
+import { ParchmentPanel } from "@/components/ParchmentPanel";
+import { StoneButton } from "@/components/StoneButton";
+import { Avatar } from "@/components/Avatar";
 
 export default function GymsScreen() {
   const router = useRouter();
@@ -64,13 +68,11 @@ export default function GymsScreen() {
     <View style={styles.container}>
       {/* Wizard area */}
       <View style={styles.wizardArea}>
-        <View style={styles.wizardAvatar}>
-          <Text style={styles.wizardEmoji}>🧙</Text>
-        </View>
-        <View style={styles.speechBubble}>
-          <Text style={styles.speechText}>{t("wizard.gyms")}</Text>
+        <Avatar seed="wizard" size={78} />
+        <ParchmentPanel style={styles.speechBubble}>
           <View style={styles.speechTail} />
-        </View>
+          <Text style={styles.speechText}>{t("wizard.gyms")}</Text>
+        </ParchmentPanel>
       </View>
 
       {/* Content area */}
@@ -79,7 +81,7 @@ export default function GymsScreen() {
         <TextInput
           style={styles.searchInput}
           placeholder="Search gyms..."
-          placeholderTextColor="#666680"
+          placeholderTextColor={COLORS.muted}
           value={searchText}
           onChangeText={setSearchText}
           autoCapitalize="none"
@@ -102,7 +104,7 @@ export default function GymsScreen() {
                   }
                 >
                   <Text style={styles.selectedChipText}>{gym.name}</Text>
-                  <Text style={styles.selectedChipX}> x</Text>
+                  <Text style={styles.selectedChipX}> ×</Text>
                 </Pressable>
               ))}
             </View>
@@ -154,13 +156,9 @@ export default function GymsScreen() {
         />
 
         {/* Continue button */}
-        <Pressable
-          style={[styles.continueButton, !canContinue && styles.buttonDisabled]}
-          onPress={handleContinue}
-          disabled={!canContinue}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </Pressable>
+        <View style={{ opacity: canContinue ? 1 : 0.4, marginTop: 12, marginBottom: 32 }}>
+          <StoneButton label="Continue" onPress={handleContinue} />
+        </View>
       </View>
     </View>
   );
@@ -169,7 +167,7 @@ export default function GymsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.bg,
   },
   // ─── Wizard Area ──────────────────────────────────────
   wizardArea: {
@@ -178,28 +176,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     paddingHorizontal: 24,
-  },
-  wizardAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#16213e",
-    borderWidth: 2,
-    borderColor: "#2a2a4a",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  wizardEmoji: {
-    fontSize: 32,
+    gap: 12,
   },
   speechBubble: {
-    backgroundColor: "#16213e",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#2a2a4a",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
     maxWidth: "90%",
     position: "relative",
   },
@@ -216,12 +195,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 8,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderBottomColor: "#2a2a4a",
+    borderBottomColor: "#5a4230",
   },
   speechText: {
-    color: "#eaeaea",
-    fontSize: 15,
-    lineHeight: 22,
+    fontFamily: "VT323",
+    color: COLORS.bg,
+    fontSize: 18,
+    lineHeight: 24,
     textAlign: "center",
   },
   // ─── Content Area ─────────────────────────────────────
@@ -230,22 +210,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   searchInput: {
-    backgroundColor: "#16213e",
-    borderWidth: 1,
-    borderColor: "#2a2a4a",
-    borderRadius: 12,
+    fontFamily: "VT323",
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 4,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: "#eaeaea",
-    fontSize: 16,
+    paddingVertical: 12,
+    color: COLORS.text,
+    fontSize: 18,
     marginBottom: 12,
   },
   selectedSection: {
     marginBottom: 12,
   },
   selectedLabel: {
-    color: "#666680",
-    fontSize: 13,
+    fontFamily: "VT323",
+    color: COLORS.primary,
+    fontSize: 16,
     marginBottom: 8,
   },
   selectedChips: {
@@ -255,20 +237,20 @@ const styles = StyleSheet.create({
   },
   selectedChip: {
     flexDirection: "row",
-    backgroundColor: "#f4a261",
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   selectedChipText: {
-    color: "#1a1a2e",
-    fontWeight: "600",
-    fontSize: 13,
+    fontFamily: "VT323",
+    color: COLORS.bg,
+    fontSize: 16,
   },
   selectedChipX: {
-    color: "#1a1a2e",
-    fontWeight: "bold",
-    fontSize: 13,
+    fontFamily: "VT323",
+    color: COLORS.bg,
+    fontSize: 16,
   },
   // ─── Gym List ─────────────────────────────────────────
   list: {
@@ -280,70 +262,55 @@ const styles = StyleSheet.create({
   gymRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#16213e",
-    borderWidth: 1,
-    borderColor: "#2a2a4a",
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 4,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     marginBottom: 8,
   },
   gymRowSelected: {
-    borderColor: "#f4a261",
+    borderColor: COLORS.primary,
   },
   gymInfo: {
     flex: 1,
   },
   gymName: {
-    color: "#eaeaea",
-    fontSize: 15,
-    fontWeight: "600",
+    fontFamily: "VT323",
+    color: COLORS.text,
+    fontSize: 18,
   },
   gymLocation: {
-    color: "#666680",
-    fontSize: 13,
+    fontFamily: "VT323",
+    color: COLORS.muted,
+    fontSize: 14,
     marginTop: 2,
   },
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: 2,
     borderWidth: 2,
-    borderColor: "#2a2a4a",
+    borderColor: COLORS.border,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 12,
   },
   checkboxChecked: {
-    backgroundColor: "#f4a261",
-    borderColor: "#f4a261",
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   checkmark: {
-    color: "#1a1a2e",
-    fontWeight: "bold",
-    fontSize: 14,
+    fontFamily: "VT323",
+    color: COLORS.bg,
+    fontSize: 16,
   },
   emptyText: {
-    color: "#666680",
-    fontSize: 14,
+    fontFamily: "VT323",
+    color: COLORS.muted,
+    fontSize: 16,
     textAlign: "center",
     marginTop: 24,
-  },
-  // ─── Buttons ──────────────────────────────────────────
-  continueButton: {
-    backgroundColor: "#f4a261",
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 12,
-    marginBottom: 32,
-  },
-  continueButtonText: {
-    color: "#1a1a2e",
-    fontWeight: "bold",
-    fontSize: 18,
-  },
-  buttonDisabled: {
-    opacity: 0.4,
   },
 });

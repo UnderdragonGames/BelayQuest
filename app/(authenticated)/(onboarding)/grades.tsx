@@ -9,6 +9,10 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { t } from "@/lib/copy/en";
 import { allGrades } from "@/lib/grades/parser";
+import { COLORS } from "@/lib/theme";
+import { ParchmentPanel } from "@/components/ParchmentPanel";
+import { StoneButton } from "@/components/StoneButton";
+import { Avatar } from "@/components/Avatar";
 
 const CLIMBING_STYLES = ["Boulder", "Top Rope", "Lead"] as const;
 const YEARS_OPTIONS = ["< 1 year", "1-3 years", "3-5 years", "5+ years"] as const;
@@ -76,13 +80,11 @@ export default function GradesScreen() {
     <View style={styles.container}>
       {/* Wizard area */}
       <View style={styles.wizardArea}>
-        <View style={styles.wizardAvatar}>
-          <Text style={styles.wizardEmoji}>🧙</Text>
-        </View>
-        <View style={styles.speechBubble}>
-          <Text style={styles.speechText}>{t("wizard.grades")}</Text>
+        <Avatar seed="wizard" size={78} />
+        <ParchmentPanel style={styles.speechBubble}>
           <View style={styles.speechTail} />
-        </View>
+          <Text style={styles.speechText}>{t("wizard.grades")}</Text>
+        </ParchmentPanel>
       </View>
 
       {/* Content area */}
@@ -148,7 +150,6 @@ export default function GradesScreen() {
                       setRouteMax(grade);
                     }
                   }}
-                  onLongPress={() => setRouteMax(grade)}
                 >
                   <Text
                     style={[
@@ -164,7 +165,7 @@ export default function GradesScreen() {
           </ScrollView>
         </View>
         <Text style={styles.gradeHint}>
-          Tap to set min, long-press to set max
+          Tap your lowest, then your highest
         </Text>
 
         {/* Boulder Grade Range */}
@@ -197,7 +198,6 @@ export default function GradesScreen() {
                       setBoulderMax(grade);
                     }
                   }}
-                  onLongPress={() => setBoulderMax(grade)}
                 >
                   <Text
                     style={[
@@ -213,7 +213,7 @@ export default function GradesScreen() {
           </ScrollView>
         </View>
         <Text style={styles.gradeHint}>
-          Tap to set min, long-press to set max
+          Tap your lowest, then your highest
         </Text>
 
         {/* Years Climbing */}
@@ -241,13 +241,9 @@ export default function GradesScreen() {
         </View>
 
         {/* Continue */}
-        <Pressable
-          style={[styles.continueButton, !canContinue && styles.buttonDisabled]}
-          onPress={handleContinue}
-          disabled={!canContinue}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </Pressable>
+        <View style={{ opacity: canContinue ? 1 : 0.4, marginTop: 32 }}>
+          <StoneButton label="Continue" onPress={handleContinue} />
+        </View>
       </ScrollView>
     </View>
   );
@@ -256,7 +252,7 @@ export default function GradesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.bg,
   },
   // ─── Wizard Area ──────────────────────────────────────
   wizardArea: {
@@ -266,27 +262,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     paddingHorizontal: 24,
   },
-  wizardAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#16213e",
-    borderWidth: 2,
-    borderColor: "#2a2a4a",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  wizardEmoji: {
-    fontSize: 32,
-  },
   speechBubble: {
-    backgroundColor: "#16213e",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#2a2a4a",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
     maxWidth: "90%",
     position: "relative",
   },
@@ -303,12 +279,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 8,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderBottomColor: "#2a2a4a",
+    borderBottomColor: "#5a4230",
   },
   speechText: {
-    color: "#eaeaea",
-    fontSize: 15,
-    lineHeight: 22,
+    fontFamily: "VT323",
+    color: COLORS.bg,
+    fontSize: 18,
+    lineHeight: 24,
     textAlign: "center",
   },
   // ─── Content Area ─────────────────────────────────────
@@ -320,9 +297,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   sectionLabel: {
-    color: "#eaeaea",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: "VT323",
+    color: COLORS.primary,
+    fontSize: 20,
     marginTop: 20,
     marginBottom: 10,
   },
@@ -332,24 +309,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   chip: {
-    backgroundColor: "#16213e",
-    borderWidth: 1,
-    borderColor: "#2a2a4a",
-    borderRadius: 10,
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 4,
     paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   chipActive: {
-    backgroundColor: "#f4a261",
-    borderColor: "#f4a261",
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   chipText: {
-    color: "#eaeaea",
-    fontSize: 14,
-    fontWeight: "600",
+    fontFamily: "VT323",
+    color: COLORS.text,
+    fontSize: 18,
   },
   chipTextActive: {
-    color: "#1a1a2e",
+    color: COLORS.bg,
   },
   // ─── Grade Picker ─────────────────────────────────────
   gradePickerRow: {
@@ -361,47 +338,32 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   gradeChip: {
-    backgroundColor: "#16213e",
+    backgroundColor: COLORS.card,
     borderWidth: 1,
-    borderColor: "#2a2a4a",
-    borderRadius: 8,
+    borderColor: COLORS.border,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   gradeChipInRange: {
-    backgroundColor: "rgba(244, 162, 97, 0.2)",
-    borderColor: "#f4a261",
+    backgroundColor: COLORS.primary + "33",
+    borderColor: COLORS.primary,
   },
   gradeChipEndpoint: {
-    backgroundColor: "#f4a261",
+    backgroundColor: COLORS.primary,
   },
   gradeChipText: {
-    color: "#666680",
-    fontSize: 12,
-    fontWeight: "600",
+    fontFamily: "VT323",
+    color: COLORS.muted,
+    fontSize: 14,
   },
   gradeChipTextInRange: {
-    color: "#eaeaea",
+    color: COLORS.text,
   },
   gradeHint: {
-    color: "#666680",
-    fontSize: 12,
+    fontFamily: "VT323",
+    color: COLORS.muted,
+    fontSize: 14,
     marginTop: 6,
-  },
-  // ─── Buttons ──────────────────────────────────────────
-  continueButton: {
-    backgroundColor: "#f4a261",
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 32,
-  },
-  continueButtonText: {
-    color: "#1a1a2e",
-    fontWeight: "bold",
-    fontSize: 18,
-  },
-  buttonDisabled: {
-    opacity: 0.4,
   },
 });
