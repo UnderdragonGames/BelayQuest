@@ -8,8 +8,7 @@ const http = httpRouter();
 auth.addHttpRoutes(http);
 
 // ─── Apple Universal Links association file ──────────────────
-// Replace TEAM_ID below with the actual Apple Developer Team ID
-// (found at https://developer.apple.com/account → Membership Details)
+// Apple Team ID: JD2G8378HZ (from EAS submit config)
 http.route({
   path: "/.well-known/apple-app-site-association",
   method: "GET",
@@ -19,7 +18,7 @@ http.route({
         apps: [],
         details: [
           {
-            appID: "TEAM_ID.quest.belay.app",
+            appID: "JD2G8378HZ.quest.belay.app",
             paths: ["/j/*"],
           },
         ],
@@ -32,9 +31,10 @@ http.route({
 });
 
 // ─── Android App Links association file ──────────────────────
-// Replace FINGERPRINT_PLACEHOLDER with the SHA-256 fingerprint of
-// the signing certificate (get via: keytool -list -v -keystore <keystore>
-// or from Play Console → Setup → App signing → SHA-256 certificate fingerprint)
+// SHA-256 fingerprint: retrieve after first EAS Android build via:
+//   eas credentials --platform android
+// or from Play Console → Setup → App signing → SHA-256 certificate fingerprint.
+// Replace ANDROID_SHA256_PLACEHOLDER once the EAS keystore is generated.
 http.route({
   path: "/.well-known/assetlinks.json",
   method: "GET",
@@ -45,7 +45,7 @@ http.route({
         target: {
           namespace: "android_app",
           package_name: "quest.belay.app",
-          sha256_cert_fingerprints: ["FINGERPRINT_PLACEHOLDER"],
+          sha256_cert_fingerprints: ["ANDROID_SHA256_PLACEHOLDER"],
         },
       },
     ];

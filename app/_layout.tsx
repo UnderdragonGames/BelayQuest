@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react-native";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack, useRouter } from "expo-router";
@@ -9,6 +10,24 @@ import * as Linking from "expo-linking";
 import { ConvexReactClient, useConvexAuth, useQuery } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
+
+// Initialize Sentry before anything else renders.
+// DSN is a public key — safe to embed in the client bundle.
+// In dev/CI, skip if the DSN is the placeholder string.
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN && SENTRY_DSN !== "SENTRY_DSN_PLACEHOLDER") {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    // Send 100% of errors; sample transactions at 20% to stay in free tier
+    tracesSampleRate: 0.2,
+    // Enable native crash reporting on iOS/Android
+    enableNativeCrashHandling: true,
+    // Tag every event with the release so source maps resolve correctly
+    release: process.env.EXPO_PUBLIC_APP_VERSION,
+    // Disable in Expo Go / dev builds to avoid noise
+    enabled: !__DEV__,
+  });
+}
 
 export { ErrorBoundary } from "expo-router";
 
@@ -133,7 +152,7 @@ function DeepLinkHandler({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     VT323: require("../assets/fonts/VT323-Regular.ttf"),
@@ -176,3 +195,5 @@ export default function RootLayout() {
     </ConvexAuthProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
