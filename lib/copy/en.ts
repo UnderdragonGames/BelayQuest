@@ -170,7 +170,21 @@ export const copy = {
 
   // ─── SMS Invite ──────────────────────────────────────────
   "sms.invite":
-    "Hey! {name} invited you to climb at {gym} around {time}. {count} others are joining. Join the quest: {link}",
+    "{name} invited you to climb at {gym} around {time} via BelayQuest. {count} others are joining. Details: {link}\n\nReply STOP to opt out. Msg & data rates may apply.",
+
+  // ─── Add People Modal ────────────────────────────────────
+  "add_people.title": "Add People",
+  "add_people.tab_phone": "Phone",
+  "add_people.tab_contacts": "Contacts",
+  "add_people.phone_placeholder": "Phone number...",
+  "add_people.nickname_placeholder": "Nickname (optional)...",
+  "add_people.add": "Add",
+  "add_people.done": "Done",
+  "add_people.contacts_permission":
+    "Allow contacts access to quickly invite your climbing partners.",
+  "add_people.contacts_empty": "No contacts with phone numbers found.",
+  "add_people.contacts_search": "Search contacts...",
+  "add_people.already_connected": "Already connected",
 } as const;
 
 export type CopyKey = keyof typeof copy;
