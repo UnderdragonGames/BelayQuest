@@ -40,3 +40,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Claude Code agent memory (local machine state)
+.claude/projects/
+.claude/worktrees/
