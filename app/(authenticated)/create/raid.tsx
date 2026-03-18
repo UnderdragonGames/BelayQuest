@@ -8,17 +8,43 @@ import {
   TextInput,
   Platform,
   ActivityIndicator,
+  Share,
+  Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { AddPeopleModal, type AddedPerson } from "@/components/AddPeopleModal";
 import { t } from "@/lib/copy/en";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Location from "expo-location";
+import { COLORS } from "@/lib/theme";
+import { ParchmentPanel } from "@/components/ParchmentPanel";
+import { StoneButton } from "@/components/StoneButton";
+import { PixelIcon } from "@/components/PixelIcon";
+import { SectionHeader } from "@/components/SectionHeader";
+import type { IconName } from "@/assets/images/icons";
+
+const itemSlot = require("@/assets/images/ui/ItemSlotStone.webp");
 
 type Step = "gym" | "time" | "invite" | "confirm";
 const STEPS: Step[] = ["gym", "time", "invite", "confirm"];
+
+const STEP_ICONS: Record<Step, IconName> = {
+  gym: "magnifier",
+  time: "hourglass",
+  invite: "handshake",
+  confirm: "scroll",
+};
+
+const STEP_LABELS: Record<Step, string> = {
+  gym: "GYM",
+  time: "TIME",
+  invite: "PARTY",
+  confirm: "RAID",
+};
 
 function haversineKm(
   a: { latitude: number; longitude: number },
@@ -43,27 +69,133 @@ function formatDistance(km: number): string {
   return `${Math.round(miles)} mi`;
 }
 
-const COLORS = {
-  bg: "#1a1a2e",
-  primary: "#f4a261",
-  text: "#eaeaea",
-  muted: "#666680",
-  card: "#16213e",
-  border: "#2a2a4a",
-  cardSelected: "#2a3a5e",
-};
+// ─── Step Indicator ───────────────────────────────────────────────────────────
+
+function StepIndicator({ currentStep }: { currentStep: Step }) {
+  const currentIdx = STEPS.indexOf(currentStep);
+  return (
+    <View style={stepStyles.row}>
+      {STEPS.map((s, i) => {
+        const isActive = i === currentIdx;
+        const isPast = i < currentIdx;
+        return (
+          <View key={s} style={stepStyles.stepWrapper}>
+            {i > 0 && (
+              <View
+                style={[
+                  stepStyles.connector,
+                  i <= currentIdx && stepStyles.connectorActive,
+                ]}
+              />
+            )}
+            <View
+              style={[
+                stepStyles.iconBox,
+                isActive && stepStyles.iconBoxActive,
+                isPast && stepStyles.iconBoxPast,
+              ]}
+            >
+              {isPast ? (
+                <PixelIcon name="checkmark" size={20} />
+              ) : (
+                <PixelIcon
+                  name={STEP_ICONS[s]}
+                  size={20}
+                  style={[
+                    stepStyles.icon,
+                    !isActive && stepStyles.iconMuted,
+                  ]}
+                />
+              )}
+            </View>
+            <Text
+              style={[
+                stepStyles.label,
+                isActive && stepStyles.labelActive,
+              ]}
+            >
+              {STEP_LABELS[s]}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const stepStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  stepWrapper: {
+    alignItems: "center",
+    flex: 1,
+    position: "relative",
+  },
+  connector: {
+    position: "absolute",
+    top: 14,
+    right: "50%",
+    left: "-50%",
+    height: 2,
+    backgroundColor: COLORS.border,
+  },
+  connectorActive: {
+    backgroundColor: COLORS.primary,
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 2,
+    zIndex: 1,
+  },
+  iconBoxActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.cardSelected,
+  },
+  iconBoxPast: {
+    borderColor: COLORS.xp,
+    backgroundColor: "#1e3828",
+  },
+  icon: {},
+  iconMuted: {
+    opacity: 0.4,
+  },
+  label: {
+    fontFamily: "VT323",
+    fontSize: 13,
+    color: COLORS.muted,
+    marginTop: 4,
+    letterSpacing: 1,
+  },
+  labelActive: {
+    color: COLORS.primary,
+  },
+});
+
+// ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function CreateRaidScreen() {
   const router = useRouter();
+  const { bottom: bottomInset } = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     quickRaidSessionId?: string;
+    quickRaidShortCode?: string;
     quickRaidGymName?: string;
     quickRaidScheduledAt?: string;
     quickRaidGuildName?: string;
     quickRaidInvitedMembers?: string;
   }>();
 
-  // If coming from quick raid, jump straight to confirm
   const isQuickRaid = !!params.quickRaidSessionId;
 
   const [step, setStep] = useState<Step>(isQuickRaid ? "confirm" : "gym");
@@ -78,14 +210,14 @@ export default function CreateRaidScreen() {
     if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
     return d;
   });
-  const [datePickerMode, setDatePickerMode] = useState<"date" | "time">(
-    "date"
-  );
+  const [datePickerMode, setDatePickerMode] = useState<"date" | "time">("date");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedGuildIds, setSelectedGuildIds] = useState<Id<"guilds">[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<Id<"users">[]>([]);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddPeople, setShowAddPeople] = useState(false);
+  const [phoneInvites, setPhoneInvites] = useState<AddedPerson[]>([]);
   const [gymSearch, setGymSearch] = useState("");
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
@@ -124,6 +256,7 @@ export default function CreateRaidScreen() {
 
   const createRaid = useMutation(api.sessions.createRaid);
   const confirmRaid = useMutation(api.sessions.confirmRaid);
+  const addByPhoneBatch = useMutation(api.connections.addByPhoneBatch);
 
   const stepIndex = STEPS.indexOf(step);
 
@@ -154,7 +287,7 @@ export default function CreateRaidScreen() {
       case "time":
         return true;
       case "invite":
-        return true; // Solo raids are allowed
+        return true;
       default:
         return false;
     }
@@ -167,18 +300,14 @@ export default function CreateRaidScreen() {
           ? prev.filter((id) => id !== guildId)
           : [...prev, guildId]
       );
-
-      // Also toggle individual members from that guild
       const guild = guilds?.find((g) => g._id === guildId);
       if (guild) {
         const memberIds = guild.members.map((m) => m.userId);
         setSelectedUserIds((prev) => {
           const isSelected = selectedGuildIds.includes(guildId);
           if (isSelected) {
-            // Removing guild: remove its members
             return prev.filter((id) => !memberIds.includes(id));
           } else {
-            // Adding guild: add its members
             const newIds = new Set([...prev, ...memberIds]);
             return Array.from(newIds) as Id<"users">[];
           }
@@ -198,45 +327,74 @@ export default function CreateRaidScreen() {
 
   const handleConfirm = useCallback(async () => {
     setIsSubmitting(true);
+    let resultSessionId: string;
+    let shortCode: string;
+    let gymName: string;
+    let raidTime: Date;
+
     try {
       if (isQuickRaid) {
-        // Quick raid already created the session, just confirm
         await confirmRaid({
           sessionId: params.quickRaidSessionId as Id<"sessions">,
         });
-        router.replace({
-          pathname: "/session/[id]",
-          params: { id: params.quickRaidSessionId! },
-        });
+        resultSessionId = params.quickRaidSessionId!;
+        shortCode = params.quickRaidShortCode!;
+        gymName = params.quickRaidGymName ?? "";
+        raidTime = scheduledAt;
       } else {
-        const sessionId = await createRaid({
+        const result = await createRaid({
           gymId: selectedGymId!,
           scheduledAt: scheduledAt.getTime(),
           note: note || undefined,
           inviteUserIds: selectedUserIds,
           inviteGuildIds: selectedGuildIds,
         });
-        await confirmRaid({ sessionId });
-        router.replace({
-          pathname: "/session/[id]",
-          params: { id: sessionId },
-        });
+        await confirmRaid({ sessionId: result.sessionId });
+        if (phoneInvites.length > 0) {
+          await addByPhoneBatch({
+            entries: phoneInvites.map((p) => ({ phone: p.phone, nickname: p.name })),
+            sessionId: result.sessionId,
+          });
+        }
+        resultSessionId = result.sessionId;
+        shortCode = result.shortCode;
+        gymName = selectedGymName;
+        raidTime = scheduledAt;
       }
     } catch (error) {
-      // Let the error surface
       setIsSubmitting(false);
       throw error;
     }
+
+    const shareUrl = `${process.env.EXPO_PUBLIC_CONVEX_SITE_URL}/j/${shortCode}`;
+    const shareMessage = `Climb at ${gymName} — ${formatDate(raidTime)} at ${formatTime(raidTime)}`;
+    try {
+      await Share.share(
+        Platform.OS === "ios"
+          ? { message: shareMessage, url: shareUrl }
+          : { message: `${shareMessage}\n${shareUrl}` }
+      );
+    } catch {
+      // User cancelled or share failed — continue to navigation
+    }
+
+    router.replace({
+      pathname: "/session/[id]",
+      params: { id: resultSessionId },
+    });
   }, [
     isQuickRaid,
     params,
     selectedGymId,
+    selectedGymName,
     scheduledAt,
     note,
     selectedUserIds,
     selectedGuildIds,
+    phoneInvites,
     createRaid,
     confirmRaid,
+    addByPhoneBatch,
     router,
   ]);
 
@@ -274,17 +432,14 @@ export default function CreateRaidScreen() {
     return date.toDateString() === tomorrow.toDateString();
   };
 
-  // Quick raid pre-filled members
   const quickRaidMembers = params.quickRaidInvitedMembers
     ? JSON.parse(params.quickRaidInvitedMembers)
     : [];
 
-  // ─── Gym sorting by distance ──────────────────────────────
   const isSearching = gymSearch.trim().length > 0;
   const hasFavorites = favoriteGyms && favoriteGyms.length > 0;
 
   const gymsToShow = useMemo(() => {
-    // Priority: search results > location-sorted all gyms > favorites > empty
     let pool: typeof allGyms;
     if (isSearching) {
       pool = searchResults ?? [];
@@ -302,15 +457,15 @@ export default function CreateRaidScreen() {
       .slice(0, 10);
   }, [isSearching, searchResults, allGyms, favoriteGyms, hasFavorites, userLocation]);
 
-  // ─── Step Renderers ──────────────────────────────────────
+  // ─── Step Renderers ──────────────────────────────────────────────────────────
 
-  const renderGymStep = () => {
+  const renderGymStep = () => (
+    <ScrollView style={styles.stepContent} contentContainerStyle={styles.stepContentContainer}>
+      <SectionHeader title={t("raid.step.gym")} />
 
-    return (
-      <ScrollView style={styles.stepContent} contentContainerStyle={styles.stepContentContainer}>
-        <Text style={styles.stepTitle}>{t("raid.step.gym")}</Text>
-
-        <View style={styles.gymSearchRow}>
+      <View style={styles.gymSearchRow}>
+        <View style={styles.gymSearchInputWrapper}>
+          <PixelIcon name="magnifier" size={18} style={styles.searchIcon} />
           <TextInput
             style={styles.gymSearchInput}
             placeholder="Search gyms..."
@@ -319,94 +474,90 @@ export default function CreateRaidScreen() {
             onChangeText={setGymSearch}
             autoCorrect={false}
           />
-          <Pressable
-            style={[
-              styles.locateButton,
-              userLocation && styles.locateButtonActive,
-            ]}
-            onPress={handleLocate}
-            disabled={locating}
-          >
-            {locating ? (
-              <ActivityIndicator color={COLORS.primary} size="small" />
-            ) : (
-              <Text
-                style={[
-                  styles.locateIcon,
-                  userLocation && styles.locateIconActive,
-                ]}
-              >
-                ◎
-              </Text>
-            )}
-          </Pressable>
         </View>
+        <Pressable
+          style={[styles.locateButton, userLocation && styles.locateButtonActive]}
+          onPress={handleLocate}
+          disabled={locating}
+        >
+          {locating ? (
+            <ActivityIndicator color={COLORS.primary} size="small" />
+          ) : (
+            <PixelIcon
+              name="compass"
+              size={20}
+              style={!userLocation ? { opacity: 0.5 } : undefined}
+            />
+          )}
+        </Pressable>
+      </View>
 
-        {!isSearching && userLocation && (
-          <Text style={styles.sectionLabel}>Nearby</Text>
-        )}
-        {!isSearching && !userLocation && hasFavorites && (
-          <Text style={styles.sectionLabel}>Favorites</Text>
-        )}
+      {!isSearching && userLocation && (
+        <Text style={styles.sectionLabel}>◈ NEARBY</Text>
+      )}
+      {!isSearching && !userLocation && hasFavorites && (
+        <Text style={styles.sectionLabel}>◈ FAVORITES</Text>
+      )}
 
-        {isSearching && searchResults === undefined ? (
-          <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
-        ) : gymsToShow.length === 0 ? (
-          <Text style={styles.emptyText}>
-            {isSearching
-              ? "No gyms found"
-              : "Tap the locate button or search for a gym"}
-          </Text>
-        ) : (
-          gymsToShow.map((gym) => {
-            const dist = userLocation ? haversineKm(userLocation, gym) : null;
-            return (
-              <Pressable
-                key={gym._id}
-                style={[
-                  styles.gymCard,
-                  selectedGymId === gym._id && styles.gymCardSelected,
-                ]}
-                onPress={() => {
-                  setSelectedGymId(gym._id);
-                  setSelectedGymName(gym.name);
-                  setStep("time");
-                }}
-              >
-                <View style={styles.gymCardHeader}>
-                  <Text style={[styles.gymName, { flex: 1 }]}>{gym.name}</Text>
-                  {dist !== null && (
-                    <Text style={styles.gymDistance}>
-                      {formatDistance(dist)}
-                    </Text>
-                  )}
+      {isSearching && searchResults === undefined ? (
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+      ) : gymsToShow.length === 0 ? (
+        <Text style={styles.emptyText}>
+          {isSearching
+            ? "No gyms found"
+            : "Tap the compass or search for a gym"}
+        </Text>
+      ) : (
+        gymsToShow.map((gym) => {
+          const dist = userLocation ? haversineKm(userLocation, gym) : null;
+          const isSelected = selectedGymId === gym._id;
+          return (
+            <Pressable
+              key={gym._id}
+              style={[styles.gymCard, isSelected && styles.gymCardSelected]}
+              onPress={() => {
+                setSelectedGymId(gym._id);
+                setSelectedGymName(gym.name);
+                setStep("time");
+              }}
+            >
+              <View style={styles.gymCardInner}>
+                <View style={styles.gymSlot}>
+                  <Image source={itemSlot} style={styles.gymSlotBg} resizeMode="contain" />
+                  <PixelIcon name="boulder" size={24} style={styles.gymSlotIcon} />
                 </View>
-                <Text style={styles.gymAddress}>
-                  {gym.address ? `${gym.address}, ` : ""}{gym.city}, {gym.state}
-                </Text>
-              </Pressable>
-            );
-          })
-        )}
-      </ScrollView>
-    );
-  };
+                <View style={styles.gymInfo}>
+                  <Text style={[styles.gymName, isSelected && styles.gymNameSelected]}>
+                    {gym.name}
+                  </Text>
+                  <Text style={styles.gymAddress}>
+                    {gym.address ? `${gym.address}, ` : ""}{gym.city}, {gym.state}
+                  </Text>
+                </View>
+                {dist !== null && (
+                  <Text style={styles.gymDistance}>{formatDistance(dist)}</Text>
+                )}
+                {isSelected && (
+                  <PixelIcon name="checkmark" size={20} />
+                )}
+              </View>
+            </Pressable>
+          );
+        })
+      )}
+    </ScrollView>
+  );
 
   const renderTimeStep = () => (
     <ScrollView style={styles.stepContent} contentContainerStyle={styles.stepContentContainer}>
-      <Text style={styles.stepTitle}>{t("raid.step.time")}</Text>
+      <SectionHeader title={t("raid.step.time")} />
 
       <View style={styles.dayRow}>
         <Pressable
           style={[styles.dayChip, isToday(scheduledAt) && styles.dayChipSelected]}
           onPress={setToday}
         >
-          <Text
-            style={[
-              styles.dayChipText,
-              isToday(scheduledAt) && styles.dayChipTextSelected,
-            ]}
-          >
+          <Text style={[styles.dayChipText, isToday(scheduledAt) && styles.dayChipTextSelected]}>
             {t("raid.time.today")}
           </Text>
         </Pressable>
@@ -414,12 +565,7 @@ export default function CreateRaidScreen() {
           style={[styles.dayChip, isTomorrow(scheduledAt) && styles.dayChipSelected]}
           onPress={setTomorrow}
         >
-          <Text
-            style={[
-              styles.dayChipText,
-              isTomorrow(scheduledAt) && styles.dayChipTextSelected,
-            ]}
-          >
+          <Text style={[styles.dayChipText, isTomorrow(scheduledAt) && styles.dayChipTextSelected]}>
             {t("raid.time.tomorrow")}
           </Text>
         </Pressable>
@@ -434,9 +580,13 @@ export default function CreateRaidScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.selectedDateText}>{formatDate(scheduledAt)}</Text>
+      <ParchmentPanel style={styles.dateDisplay}>
+        <Text style={styles.selectedDateText}>{formatDate(scheduledAt)}</Text>
+      </ParchmentPanel>
 
-      <Text style={styles.timeLabel}>Time</Text>
+      <Text style={styles.timeLabel}>
+        <PixelIcon name="hourglass" size={14} /> TIME
+      </Text>
       <Pressable
         style={styles.timeButton}
         onPress={() => {
@@ -444,7 +594,9 @@ export default function CreateRaidScreen() {
           setShowDatePicker(true);
         }}
       >
-        <Text style={styles.timeButtonText}>{formatTime(scheduledAt)}</Text>
+        <ParchmentPanel>
+          <Text style={styles.timeButtonText}>{formatTime(scheduledAt)}</Text>
+        </ParchmentPanel>
       </Pressable>
 
       {showDatePicker && (
@@ -479,99 +631,88 @@ export default function CreateRaidScreen() {
 
   const renderInviteStep = () => (
     <ScrollView style={styles.stepContent} contentContainerStyle={styles.stepContentContainer}>
-      <Text style={styles.stepTitle}>{t("raid.step.invite")}</Text>
+      <SectionHeader title={t("raid.step.invite")} />
 
       {guilds && guilds.length > 0 && (
         <>
-          <Text style={styles.sectionLabel}>{t("raid.invite.guilds")}</Text>
+          <Text style={styles.sectionLabel}>◈ {t("raid.invite.guilds")}</Text>
           <View style={styles.guildRow}>
-            {guilds.map((guild) => (
-              <Pressable
-                key={guild._id}
-                style={[
-                  styles.guildChip,
-                  selectedGuildIds.includes(guild._id) &&
-                    styles.guildChipSelected,
-                ]}
-                onPress={() => toggleGuild(guild._id)}
-              >
-                <Text
-                  style={[
-                    styles.guildChipText,
-                    selectedGuildIds.includes(guild._id) &&
-                      styles.guildChipTextSelected,
-                  ]}
+            {guilds.map((guild) => {
+              const isSelected = selectedGuildIds.includes(guild._id);
+              return (
+                <Pressable
+                  key={guild._id}
+                  style={[styles.guildChip, isSelected && styles.guildChipSelected]}
+                  onPress={() => toggleGuild(guild._id)}
                 >
-                  {guild.name} ({guild.members.length})
-                </Text>
-              </Pressable>
-            ))}
+                  <PixelIcon name="shield" size={16} style={{ marginRight: 6 }} />
+                  <Text style={[styles.guildChipText, isSelected && styles.guildChipTextSelected]}>
+                    {guild.name} ({guild.members.length})
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </>
       )}
 
       {connections && connections.length > 0 && (
         <>
-          <Text style={styles.sectionLabel}>{t("raid.invite.connections")}</Text>
-          {connections.map((conn) => (
-            <Pressable
-              key={conn._id}
-              style={[
-                styles.connectionRow,
-                selectedUserIds.includes(conn.connectedUserId) &&
-                  styles.connectionRowSelected,
-              ]}
-              onPress={() => toggleUser(conn.connectedUserId)}
-            >
-              <View style={styles.connectionInfo}>
-                <Text style={styles.connectionName}>
-                  {conn.nickname ?? conn.generatedName}
-                </Text>
-                {conn.nickname && (
-                  <Text style={styles.connectionSubname}>
-                    {conn.generatedName}
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.connectionLevel}>Lv.{conn.level}</Text>
-              <View
-                style={[
-                  styles.checkbox,
-                  selectedUserIds.includes(conn.connectedUserId) &&
-                    styles.checkboxChecked,
-                ]}
+          <Text style={styles.sectionLabel}>◈ {t("raid.invite.connections")}</Text>
+          {connections.map((conn) => {
+            const isSelected = selectedUserIds.includes(conn.connectedUserId);
+            return (
+              <Pressable
+                key={conn._id}
+                style={[styles.connectionRow, isSelected && styles.connectionRowSelected]}
+                onPress={() => toggleUser(conn.connectedUserId)}
               >
-                {selectedUserIds.includes(conn.connectedUserId) && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
-              </View>
-            </Pressable>
-          ))}
+                <PixelIcon name="helmet" size={28} style={styles.connectionAvatar} />
+                <View style={styles.connectionInfo}>
+                  <Text style={[styles.connectionName, isSelected && styles.connectionNameSelected]}>
+                    {conn.nickname ?? conn.generatedName}
+                  </Text>
+                  {conn.nickname && (
+                    <Text style={styles.connectionSubname}>{conn.generatedName}</Text>
+                  )}
+                </View>
+                <Text style={styles.connectionLevel}>Lv.{conn.level}</Text>
+                <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
+                  {isSelected && <PixelIcon name="checkmark" size={14} />}
+                </View>
+              </Pressable>
+            );
+          })}
         </>
       )}
 
-      <Pressable style={styles.addPhoneButton}>
+      <Pressable style={styles.addPhoneButton} onPress={() => setShowAddPeople(true)}>
+        <PixelIcon name="plus" size={16} style={{ marginRight: 8 }} />
         <Text style={styles.addPhoneText}>{t("raid.invite.add_phone")}</Text>
       </Pressable>
 
+      {phoneInvites.length > 0 && (
+        <View style={styles.phoneInviteList}>
+          {phoneInvites.map((p) => (
+            <View key={p.phone} style={styles.phoneInviteRow}>
+              {p.name && <Text style={styles.phoneInviteName}>{p.name}</Text>}
+              <Text style={styles.phoneInvitePhone}>{p.phone}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {selectedGuildIds.length === 0 && selectedUserIds.length === 0 && (
-        <Text style={styles.emptyInviteText}>
-          No one selected — you can still go solo!
-        </Text>
+        <Text style={styles.emptyInviteText}>No one selected — solo raid!</Text>
       )}
     </ScrollView>
   );
 
   const renderConfirmStep = () => {
-    const displayGymName = isQuickRaid
-      ? params.quickRaidGymName ?? ""
-      : selectedGymName;
+    const displayGymName = isQuickRaid ? params.quickRaidGymName ?? "" : selectedGymName;
     const displayDate = scheduledAt;
-    const displayGuildName = isQuickRaid
-      ? params.quickRaidGuildName
-      : undefined;
+    const displayGuildName = isQuickRaid ? params.quickRaidGuildName : undefined;
 
-    // Gather invited member names for display
     let invitedNames: string[] = [];
     if (isQuickRaid && quickRaidMembers.length > 0) {
       invitedNames = quickRaidMembers.map(
@@ -579,31 +720,20 @@ export default function CreateRaidScreen() {
           m.nickname ?? m.generatedName
       );
     } else {
-      // Combine guild members + individual selections
-      const allSelectedUserIds = new Set(
-        selectedUserIds.map((id) => id.toString())
-      );
+      const allSelectedUserIds = new Set(selectedUserIds.map((id) => id.toString()));
       for (const guildId of selectedGuildIds) {
         const guild = guilds?.find((g) => g._id === guildId);
         if (guild) {
-          for (const m of guild.members) {
-            allSelectedUserIds.add(m.userId.toString());
-          }
+          for (const m of guild.members) allSelectedUserIds.add(m.userId.toString());
         }
       }
-      // Get names from connections and guild members
       for (const uid of allSelectedUserIds) {
-        const conn = connections?.find(
-          (c) => c.connectedUserId.toString() === uid
-        );
+        const conn = connections?.find((c) => c.connectedUserId.toString() === uid);
         if (conn) {
           invitedNames.push(conn.nickname ?? conn.generatedName ?? "Unknown");
         } else {
-          // Check guild members
           for (const guild of guilds ?? []) {
-            const member = guild.members.find(
-              (m) => m.userId.toString() === uid
-            );
+            const member = guild.members.find((m) => m.userId.toString() === uid);
             if (member) {
               invitedNames.push(member.nickname ?? member.generatedName ?? "Unknown");
               break;
@@ -615,22 +745,24 @@ export default function CreateRaidScreen() {
 
     return (
       <ScrollView style={styles.stepContent} contentContainerStyle={styles.stepContentContainer}>
-        <Text style={styles.stepTitle}>{t("raid.step.confirm")}</Text>
+        <SectionHeader title={t("raid.step.confirm")} />
 
-        <View style={styles.confirmCard}>
-          <Text style={styles.confirmIcon}>⚔</Text>
+        <ParchmentPanel style={styles.confirmCard}>
+          <View style={styles.confirmIconRow}>
+            <PixelIcon name="swords" size={40} />
+          </View>
 
           <Text style={styles.confirmLabel}>{t("raid.confirm.gym")}</Text>
           <Text style={styles.confirmValue}>{displayGymName}</Text>
 
           <Text style={styles.confirmLabel}>{t("raid.confirm.time")}</Text>
           <Text style={styles.confirmValue}>
-            {formatDate(displayDate)} at {formatTime(displayDate)}
+            {formatDate(displayDate)} @ {formatTime(displayDate)}
           </Text>
 
           {displayGuildName && (
             <>
-              <Text style={styles.confirmLabel}>Guild</Text>
+              <Text style={styles.confirmLabel}>GUILD</Text>
               <Text style={styles.confirmValue}>{displayGuildName}</Text>
             </>
           )}
@@ -639,20 +771,18 @@ export default function CreateRaidScreen() {
           {invitedNames.length > 0 ? (
             <>
               <Text style={styles.confirmValue}>
-                {t("raid.confirm.members_count", {
-                  count: invitedNames.length + 1,
-                })}
+                {t("raid.confirm.members_count", { count: invitedNames.length + 1 })}
               </Text>
               {invitedNames.map((name, idx) => (
                 <Text key={idx} style={styles.memberName}>
-                  {name}
+                  ▸ {name}
                 </Text>
               ))}
             </>
           ) : (
-            <Text style={styles.confirmValue}>Just you (for now)</Text>
+            <Text style={styles.confirmValue}>Just you (solo raid)</Text>
           )}
-        </View>
+        </ParchmentPanel>
 
         {!isQuickRaid && (
           <TextInput
@@ -665,82 +795,62 @@ export default function CreateRaidScreen() {
           />
         )}
 
-        <Pressable
-          style={[styles.confirmButton, isSubmitting && styles.buttonDisabled]}
-          onPress={handleConfirm}
-          disabled={isSubmitting}
-        >
+        <View style={[styles.confirmButtonWrapper, isSubmitting && { opacity: 0.5 }]}>
           {isSubmitting ? (
-            <ActivityIndicator color={COLORS.bg} />
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={COLORS.primary} />
+              <Text style={styles.loadingText}>Sending invites...</Text>
+            </View>
           ) : (
-            <Text style={styles.confirmButtonText}>
-              {t("raid.confirm.send")}
-            </Text>
+            <StoneButton label={t("raid.confirm.send")} onPress={handleConfirm} />
           )}
-        </Pressable>
+        </View>
       </ScrollView>
     );
   };
 
   const renderStep = () => {
     switch (step) {
-      case "gym":
-        return renderGymStep();
-      case "time":
-        return renderTimeStep();
-      case "invite":
-        return renderInviteStep();
-      case "confirm":
-        return renderConfirmStep();
+      case "gym":    return renderGymStep();
+      case "time":   return renderTimeStep();
+      case "invite": return renderInviteStep();
+      case "confirm": return renderConfirmStep();
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Progress indicator */}
-      <View style={styles.progressRow}>
-        {STEPS.map((s, i) => (
-          <View
-            key={s}
-            style={[
-              styles.progressDot,
-              i <= stepIndex && styles.progressDotActive,
-            ]}
-          />
-        ))}
-      </View>
+      <StepIndicator currentStep={step} />
 
       {renderStep()}
 
-      {/* Navigation buttons */}
       {step !== "confirm" && (
-        <View style={styles.navRow}>
-          <Pressable style={styles.navButton} onPress={goBack}>
-            <Text style={styles.navButtonText}>{t("raid.step.back")}</Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.navButton,
-              styles.navButtonPrimary,
-              !canGoNext() && styles.buttonDisabled,
-            ]}
-            onPress={goNext}
-            disabled={!canGoNext()}
-          >
-            <Text style={styles.navButtonPrimaryText}>
-              {t("raid.step.next")}
-            </Text>
-          </Pressable>
+        <View style={[styles.navRow, { paddingBottom: Math.max(12, bottomInset) }]}>
+          <StoneButton label={t("raid.step.back")} onPress={goBack} style={{ flex: 1 }} />
+          <View style={[{ flex: 1 }, !canGoNext() && { opacity: 0.4 }]}>
+            <StoneButton label={t("raid.step.next")} onPress={canGoNext() ? goNext : () => {}} style={{ alignSelf: "stretch" }} />
+          </View>
         </View>
       )}
 
       {step === "confirm" && (
-        <View style={styles.navRow}>
-          <Pressable style={styles.navButton} onPress={goBack}>
-            <Text style={styles.navButtonText}>{t("raid.step.back")}</Text>
-          </Pressable>
+        <View style={[styles.navRow, { paddingBottom: Math.max(12, bottomInset) }]}>
+          <StoneButton label={t("raid.step.back")} onPress={goBack} style={{ flex: 1 }} />
         </View>
       )}
+
+      <AddPeopleModal
+        visible={showAddPeople}
+        onClose={() => setShowAddPeople(false)}
+        mode="batch"
+        onAdd={(entries) => {
+          setPhoneInvites((prev) => {
+            const existing = new Set(prev.map((p) => p.phone));
+            return [...prev, ...entries.filter((e) => !existing.has(e.phone))];
+          });
+          setShowAddPeople(false);
+        }}
+      />
     </View>
   );
 }
@@ -750,193 +860,203 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
-  progressRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 12,
-    gap: 8,
-  },
-  progressDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.border,
-  },
-  progressDotActive: {
-    backgroundColor: COLORS.primary,
-  },
   stepContent: {
     flex: 1,
   },
   stepContentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 20,
   },
-  stepTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.text,
-    marginBottom: 20,
-  },
-  // Gym step
+
+  // ─── Gym step ───────────────────────────────────────────────────────────────
   gymSearchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  gymSearchInputWrapper: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 2,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  searchIcon: {
+    opacity: 0.7,
   },
   gymSearchInput: {
     flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 14,
+    paddingVertical: 12,
     color: COLORS.text,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    fontFamily: "VT323",
+    fontSize: 18,
   },
   locateButton: {
     width: 48,
     height: 48,
-    borderRadius: 12,
     backgroundColor: COLORS.card,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
     justifyContent: "center",
     alignItems: "center",
   },
   locateButtonActive: {
     borderColor: COLORS.primary,
   },
-  locateIcon: {
-    fontSize: 22,
+  sectionLabel: {
+    fontFamily: "VT323",
+    fontSize: 16,
     color: COLORS.muted,
-  },
-  locateIconActive: {
-    color: COLORS.primary,
-  },
-  gymCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  gymDistance: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.primary,
-    marginLeft: 8,
+    letterSpacing: 2,
+    marginBottom: 8,
+    marginTop: 4,
   },
   gymCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
     borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
+    marginBottom: 8,
+    overflow: "hidden",
   },
   gymCardSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: COLORS.cardSelected,
+  },
+  gymCardInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    gap: 10,
+  },
+  gymSlot: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  gymSlotBg: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+  },
+  gymSlotIcon: {
+    zIndex: 1,
+  },
+  gymInfo: {
+    flex: 1,
   },
   gymName: {
-    fontSize: 17,
-    fontWeight: "bold",
+    fontFamily: "VT323",
+    fontSize: 20,
     color: COLORS.text,
-    marginBottom: 4,
+  },
+  gymNameSelected: {
+    color: COLORS.primary,
   },
   gymAddress: {
-    fontSize: 13,
+    fontFamily: "VT323",
+    fontSize: 15,
     color: COLORS.muted,
   },
+  gymDistance: {
+    fontFamily: "VT323",
+    fontSize: 16,
+    color: COLORS.primary,
+  },
   emptyText: {
-    fontSize: 15,
+    fontFamily: "VT323",
+    fontSize: 18,
     color: COLORS.muted,
     textAlign: "center",
     marginTop: 40,
   },
-  // Time step
+
+  // ─── Time step ──────────────────────────────────────────────────────────────
   dayRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 14,
   },
   dayChip: {
+    flex: 1,
     backgroundColor: COLORS.card,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
+    paddingVertical: 10,
+    alignItems: "center",
   },
   dayChipSelected: {
     borderColor: COLORS.primary,
     backgroundColor: COLORS.cardSelected,
   },
   dayChipText: {
-    fontSize: 14,
+    fontFamily: "VT323",
+    fontSize: 17,
     color: COLORS.text,
-    fontWeight: "600",
   },
   dayChipTextSelected: {
     color: COLORS.primary,
   },
+  dateDisplay: {
+    marginBottom: 16,
+    alignSelf: "stretch",
+  },
   selectedDateText: {
-    fontSize: 18,
-    color: COLORS.text,
-    fontWeight: "bold",
-    marginBottom: 24,
+    fontFamily: "VT323",
+    fontSize: 24,
+    color: COLORS.bg,
+    textAlign: "center",
   },
   timeLabel: {
-    fontSize: 14,
+    fontFamily: "VT323",
+    fontSize: 16,
     color: COLORS.muted,
+    letterSpacing: 2,
     marginBottom: 8,
   },
   timeButton: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     alignSelf: "flex-start",
+    marginBottom: 16,
   },
   timeButtonText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: COLORS.primary,
+    fontFamily: "VT323",
+    fontSize: 36,
+    color: COLORS.bg,
+    letterSpacing: 2,
   },
-  // Invite step
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: COLORS.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 10,
-    marginTop: 8,
-  },
+
+  // ─── Invite step ─────────────────────────────────────────────────────────────
   guildRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 16,
   },
   guildChip: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.card,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   guildChipSelected: {
     borderColor: COLORS.primary,
     backgroundColor: COLORS.cardSelected,
   },
   guildChipText: {
-    fontSize: 14,
+    fontFamily: "VT323",
+    fontSize: 18,
     color: COLORS.text,
-    fontWeight: "600",
   },
   guildChipTextSelected: {
     color: COLORS.primary,
@@ -945,162 +1065,170 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.card,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
+    padding: 10,
+    marginBottom: 6,
+    gap: 10,
   },
   connectionRowSelected: {
     borderColor: COLORS.primary,
     backgroundColor: COLORS.cardSelected,
   },
+  connectionAvatar: {
+    opacity: 0.8,
+  },
   connectionInfo: {
     flex: 1,
   },
   connectionName: {
-    fontSize: 15,
-    fontWeight: "bold",
+    fontFamily: "VT323",
+    fontSize: 20,
     color: COLORS.text,
   },
+  connectionNameSelected: {
+    color: COLORS.primary,
+  },
   connectionSubname: {
-    fontSize: 12,
+    fontFamily: "VT323",
+    fontSize: 15,
     color: COLORS.muted,
-    marginTop: 2,
   },
   connectionLevel: {
-    fontSize: 13,
+    fontFamily: "VT323",
+    fontSize: 16,
     color: COLORS.muted,
-    marginRight: 12,
   },
   checkbox: {
     width: 24,
     height: 24,
-    borderRadius: 6,
     borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
     justifyContent: "center",
     alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  checkmark: {
-    color: COLORS.bg,
-    fontSize: 14,
-    fontWeight: "bold",
+    backgroundColor: COLORS.xp,
+    borderColor: COLORS.xp,
   },
   addPhoneButton: {
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 12,
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
     borderColor: COLORS.border,
+    borderRadius: 2,
     borderStyle: "dashed",
+    padding: 14,
+    marginTop: 10,
+    justifyContent: "center",
   },
   addPhoneText: {
-    fontSize: 14,
+    fontFamily: "VT323",
+    fontSize: 18,
     color: COLORS.muted,
   },
   emptyInviteText: {
-    fontSize: 14,
+    fontFamily: "VT323",
+    fontSize: 18,
     color: COLORS.muted,
     textAlign: "center",
     marginTop: 20,
   },
-  // Confirm step
-  confirmCard: {
+  phoneInviteList: {
+    marginTop: 8,
+    gap: 6,
+  },
+  phoneInviteRow: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 24,
     borderWidth: 1,
     borderColor: COLORS.border,
-    marginBottom: 16,
+    borderRadius: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  confirmIcon: {
-    fontSize: 36,
-    textAlign: "center",
-    marginBottom: 16,
+  phoneInviteName: {
+    fontFamily: "VT323",
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  phoneInvitePhone: {
+    fontFamily: "VT323",
+    fontSize: 14,
+    color: COLORS.muted,
+  },
+
+  // ─── Confirm step ───────────────────────────────────────────────────────────
+  confirmCard: {
+    marginBottom: 14,
+  },
+  confirmIconRow: {
+    alignItems: "center",
+    marginBottom: 12,
   },
   confirmLabel: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: COLORS.muted,
+    fontFamily: "VT323",
+    fontSize: 14,
+    color: COLORS.bg,
+    opacity: 0.6,
     textTransform: "uppercase",
-    letterSpacing: 1,
-    marginTop: 12,
-    marginBottom: 4,
+    letterSpacing: 2,
+    marginTop: 10,
+    marginBottom: 2,
   },
   confirmValue: {
-    fontSize: 17,
-    color: COLORS.text,
-    fontWeight: "600",
+    fontFamily: "VT323",
+    fontSize: 22,
+    color: COLORS.bg,
   },
   memberName: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginTop: 4,
+    fontFamily: "VT323",
+    fontSize: 18,
+    color: COLORS.bg,
+    opacity: 0.8,
     paddingLeft: 8,
+    marginTop: 2,
   },
   noteInput: {
     backgroundColor: COLORS.card,
-    borderRadius: 12,
-    padding: 14,
-    color: COLORS.text,
-    fontSize: 15,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.border,
-    marginBottom: 16,
+    borderRadius: 2,
+    padding: 12,
+    color: COLORS.text,
+    fontFamily: "VT323",
+    fontSize: 18,
+    marginBottom: 14,
     minHeight: 60,
     textAlignVertical: "top",
   },
-  confirmButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingVertical: 16,
+  confirmButtonWrapper: {
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 4,
   },
-  confirmButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: COLORS.bg,
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 14,
   },
-  buttonDisabled: {
-    opacity: 0.5,
+  loadingText: {
+    fontFamily: "VT323",
+    fontSize: 20,
+    color: COLORS.muted,
   },
-  // Navigation
+
+  // ─── Navigation ─────────────────────────────────────────────────────────────
   navRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  navButton: {
+    alignItems: "center",
+    gap: 12,
     paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  navButtonPrimary: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  navButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  navButtonPrimaryText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: COLORS.bg,
+    paddingVertical: 12,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.border,
   },
 });
