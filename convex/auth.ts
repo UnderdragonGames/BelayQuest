@@ -40,7 +40,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
             body: new URLSearchParams({
               To: phone,
               From: fromNumber,
-              Body: `Your BelayQuest code is: ${token}`,
+              Body: `Your BelayQuest verification code is: ${token}\n\nReply STOP to opt out. Msg & data rates may apply.`,
             }).toString(),
           },
         );

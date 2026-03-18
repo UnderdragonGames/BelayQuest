@@ -1,6 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import {
   calculateXp,
   xpForGrade,
@@ -19,12 +20,29 @@ const BUFF_EFFECTS = [
   "Flow State",
 ];
 
+const DEBUFF_EFFECTS = [
+  "Poisoned",
+  "Cursed",
+  "Hexed",
+  "Frozen",
+  "Haunted",
+];
+
 function randomBuff(): { effect: string; type: "buff"; expiresAt: number } {
   const effect = BUFF_EFFECTS[Math.floor(Math.random() * BUFF_EFFECTS.length)];
   return {
     effect,
     type: "buff" as const,
     expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+  };
+}
+
+function randomDebuff(): { effect: string; type: "debuff"; expiresAt: number } {
+  const effect = DEBUFF_EFFECTS[Math.floor(Math.random() * DEBUFF_EFFECTS.length)];
+  return {
+    effect,
+    type: "debuff" as const,
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
   };
 }
 
@@ -174,6 +192,13 @@ export const logClimb = mutation({
         });
         events.push({ type: "grade_breakthrough", metadata: eventMeta });
 
+        // Fire push notification for grade breakthrough
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.sendGradeBreakthrough,
+          { userId, grade: resolvedGrade }
+        );
+
         // Apply random buff
         patchData.currentStatus = randomBuff();
       }
@@ -266,7 +291,10 @@ export const logClimb = mutation({
     // Patch user
     await ctx.db.patch(userId, patchData);
 
-    return { sendId, xpAwarded: xpCalc.totalXp, events };
+    // Check achievements asynchronously (avoids bloating logClimb latency)
+    await ctx.scheduler.runAfter(0, internal.progression.checkAchievements, { userId });
+
+    return { sendId, xpAwarded: xpCalc.totalXp, totalXpAfter: newTotalXp, events };
   },
 });
 
@@ -377,6 +405,297 @@ export const recentSends = query({
       difficultyRating: s.difficultyRating,
       climbedAt: s.climbedAt,
       gymName: gymMap.get(s.gymId) ?? "Unknown",
+    }));
+  },
+});
+
+// ─── applyNoShowCurse (internal — called from checkNoShows) ───
+// Applies a random 7-day debuff to a user who no-showed a quest.
+export const applyNoShowCurse = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId, { currentStatus: randomDebuff() });
+  },
+});
+
+// ─── Achievement Definitions ──────────────────────────────────
+type AchievementStats = {
+  maxGradeBoulder?: string;
+  maxGradeRoute?: string;
+  totalSends: number;
+  totalTapeEarned: number;
+  hostedRaids: number;
+  attendedSessions: number;
+  uniqueGyms: number;
+};
+
+export const ACHIEVEMENT_DEFS: Record<
+  string,
+  {
+    title: string;
+    description: string;
+    itemsGranted: string[];
+    check: (s: AchievementStats) => boolean;
+  }
+> = {
+  // ─── Boulder grade milestones ─────────────────────────────
+  first_boulder: {
+    title: "First Ascent",
+    description: "Log your first boulder send",
+    itemsGranted: ["chalk"],
+    check: (s) => !!s.maxGradeBoulder,
+  },
+  grade_v4: {
+    title: "V4 Vanquished",
+    description: "Send a V4 or harder",
+    itemsGranted: ["chalk_bag"],
+    check: (s) =>
+      !!s.maxGradeBoulder && gradeIndex(s.maxGradeBoulder) >= gradeIndex("V4"),
+  },
+  grade_v7: {
+    title: "Seven Deadly Sends",
+    description: "Send a V7 or harder",
+    itemsGranted: ["liquid_chalk"],
+    check: (s) =>
+      !!s.maxGradeBoulder && gradeIndex(s.maxGradeBoulder) >= gradeIndex("V7"),
+  },
+  grade_v10: {
+    title: "Decachron",
+    description: "Send a V10 or harder",
+    itemsGranted: ["liquid_chalk", "brush"],
+    check: (s) =>
+      !!s.maxGradeBoulder &&
+      gradeIndex(s.maxGradeBoulder) >= gradeIndex("V10"),
+  },
+
+  // ─── Route grade milestones ───────────────────────────────
+  first_route: {
+    title: "On Rope",
+    description: "Log your first route send",
+    itemsGranted: ["chalk"],
+    check: (s) => !!s.maxGradeRoute,
+  },
+  route_5_10: {
+    title: "5.10 Club",
+    description: "Send a 5.10 or harder",
+    itemsGranted: ["carabiner"],
+    check: (s) =>
+      !!s.maxGradeRoute &&
+      gradeIndex(s.maxGradeRoute) >= gradeIndex("5.10"),
+  },
+  route_5_12: {
+    title: "Twelve Pack",
+    description: "Send a 5.12 or harder",
+    itemsGranted: ["quickdraw"],
+    check: (s) =>
+      !!s.maxGradeRoute &&
+      gradeIndex(s.maxGradeRoute) >= gradeIndex("5.12"),
+  },
+
+  // ─── Total sends volume ───────────────────────────────────
+  sends_10: {
+    title: "Just Getting Started",
+    description: "Log 10 total sends",
+    itemsGranted: ["chalk"],
+    check: (s) => s.totalSends >= 10,
+  },
+  sends_50: {
+    title: "Sending Machine",
+    description: "Log 50 total sends",
+    itemsGranted: ["chalk_bag"],
+    check: (s) => s.totalSends >= 50,
+  },
+  sends_100: {
+    title: "Centurian Climber",
+    description: "Log 100 total sends",
+    itemsGranted: ["carabiner"],
+    check: (s) => s.totalSends >= 100,
+  },
+  sends_500: {
+    title: "Sending Legend",
+    description: "Log 500 total sends",
+    itemsGranted: ["quickdraw", "carabiner"],
+    check: (s) => s.totalSends >= 500,
+  },
+
+  // ─── Tape (persistence) ───────────────────────────────────
+  tape_10: {
+    title: "Tape Collector",
+    description: "Earn 10 pieces of tape from projecting",
+    itemsGranted: ["chalk"],
+    check: (s) => s.totalTapeEarned >= 10,
+  },
+  tape_50: {
+    title: "Tape Hoarder",
+    description: "Earn 50 pieces of tape",
+    itemsGranted: ["carabiner"],
+    check: (s) => s.totalTapeEarned >= 50,
+  },
+
+  // ─── Social ───────────────────────────────────────────────
+  host_1_raid: {
+    title: "Party Starter",
+    description: "Host your first raid",
+    itemsGranted: ["chalk"],
+    check: (s) => s.hostedRaids >= 1,
+  },
+  host_5_raids: {
+    title: "Raid Commander",
+    description: "Host 5 raids",
+    itemsGranted: ["quickdraw"],
+    check: (s) => s.hostedRaids >= 5,
+  },
+  host_10_raids: {
+    title: "Warlord",
+    description: "Host 10 raids",
+    itemsGranted: ["quickdraw", "carabiner"],
+    check: (s) => s.hostedRaids >= 10,
+  },
+
+  // ─── Explorer ─────────────────────────────────────────────
+  gyms_3: {
+    title: "Gym Hopper",
+    description: "Climb at 3 different gyms",
+    itemsGranted: ["brush"],
+    check: (s) => s.uniqueGyms >= 3,
+  },
+  gyms_5: {
+    title: "Vagabond Climber",
+    description: "Climb at 5 different gyms",
+    itemsGranted: ["carabiner"],
+    check: (s) => s.uniqueGyms >= 5,
+  },
+  gyms_10: {
+    title: "True Explorer",
+    description: "Climb at 10 different gyms",
+    itemsGranted: ["quickdraw", "brush"],
+    check: (s) => s.uniqueGyms >= 10,
+  },
+
+  // ─── Consistency ──────────────────────────────────────────
+  sessions_5: {
+    title: "Regular",
+    description: "Complete 5 climbing sessions",
+    itemsGranted: ["chalk"],
+    check: (s) => s.attendedSessions >= 5,
+  },
+  sessions_20: {
+    title: "Devoted Climber",
+    description: "Complete 20 climbing sessions",
+    itemsGranted: ["chalk_bag"],
+    check: (s) => s.attendedSessions >= 20,
+  },
+};
+
+// ─── checkAchievements (internal) ────────────────────────────
+// Scans user stats, awards any newly-earned achievements, and
+// grants the corresponding inventory items. Safe to call multiple
+// times — already-earned achievements are skipped.
+export const checkAchievements = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return;
+
+    // Gather stats
+    const [sends, tapeEvents, sessionMemberships, hostedSessions] =
+      await Promise.all([
+        ctx.db
+          .query("sends")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect(),
+        ctx.db
+          .query("events")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect(),
+        ctx.db
+          .query("sessionMembers")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect(),
+        ctx.db
+          .query("sessions")
+          .withIndex("by_creator", (q) => q.eq("creatorId", userId))
+          .collect(),
+      ]);
+
+    const stats: AchievementStats = {
+      maxGradeBoulder: user.maxGradeBoulder,
+      maxGradeRoute: user.maxGradeRoute,
+      totalSends: sends.filter((s) => s.type === "send").length,
+      totalTapeEarned: tapeEvents.filter((e) => e.type === "tape_earned")
+        .length,
+      hostedRaids: hostedSessions.filter((s) => s.type === "raid").length,
+      attendedSessions: sessionMemberships.filter(
+        (m) => m.status === "attended"
+      ).length,
+      uniqueGyms: new Set(sends.map((s) => s.gymId.toString())).size,
+    };
+
+    // Get already-earned achievements to skip duplicates
+    const existing = await ctx.db
+      .query("achievements")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const earned = new Set(existing.map((a) => a.type));
+
+    const now = Date.now();
+    for (const [type, def] of Object.entries(ACHIEVEMENT_DEFS)) {
+      if (earned.has(type)) continue;
+      if (!def.check(stats)) continue;
+
+      // Award achievement
+      const achievementId = await ctx.db.insert("achievements", {
+        userId,
+        type,
+        itemsGranted: def.itemsGranted,
+        earnedAt: now,
+      });
+
+      // Grant inventory items
+      for (const itemType of def.itemsGranted) {
+        await ctx.db.insert("inventoryItems", {
+          userId,
+          itemType,
+          sourceAchievementId: achievementId,
+          status: "held",
+          acquiredAt: now,
+        });
+      }
+
+      // Record event for the timeline
+      await ctx.db.insert("events", {
+        userId,
+        type: "achievement_unlocked",
+        metadata: { achievementType: type, title: def.title },
+        xpAwarded: 0,
+        createdAt: now,
+      });
+    }
+  },
+});
+
+// ─── myAchievements ───────────────────────────────────────────
+// Returns the user's earned achievements, most recent first,
+// with title and description joined from ACHIEVEMENT_DEFS.
+export const myAchievements = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+
+    const achievements = await ctx.db
+      .query("achievements")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+
+    return achievements.map((a) => ({
+      _id: a._id,
+      type: a.type,
+      title: ACHIEVEMENT_DEFS[a.type]?.title ?? a.type,
+      description: ACHIEVEMENT_DEFS[a.type]?.description ?? "",
+      itemsGranted: a.itemsGranted ?? [],
+      earnedAt: a.earnedAt,
     }));
   },
 });

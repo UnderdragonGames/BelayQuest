@@ -87,6 +87,10 @@ export default defineSchema({
 
     // ─── Avatar defaults ───────────────────────────────────
     avatarDefaults: v.optional(avatarValidator),
+
+    // ─── Generated avatar (PixelLab) ───────────────────────
+    avatarStorageId: v.optional(v.id("_storage")),
+    avatarUrl: v.optional(v.string()),
   })
     .index("by_generatedName", ["generatedName"])
     .index("email", ["email"])
@@ -374,6 +378,18 @@ export default defineSchema({
   })
     .index("by_session", ["sessionId"])
     .index("by_to_user", ["toUserId"]),
+
+  // ─── SMS Opt-Outs ───────────────────────────────────────
+  // TCPA compliance: phones that replied STOP. Check before sending any SMS.
+  // Retention: 10 years per Virginia SB 1339.
+  smsOptOuts: defineTable({
+    phone: v.string(), // E.164
+    optedOutAt: v.number(),
+    source: v.union(
+      v.literal("stop_reply"), // Inbound STOP keyword
+      v.literal("manual") // Manual removal request
+    ),
+  }).index("by_phone", ["phone"]),
 
   // ─── Pending Invites (Phone Number) ──────────────────────
   pendingInvites: defineTable({
