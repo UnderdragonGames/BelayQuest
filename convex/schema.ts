@@ -107,6 +107,10 @@ export default defineSchema({
     longitude: v.number(),
     source: v.string(),
     verified: v.boolean(),
+    website: v.optional(v.string()),
+    gymType: v.optional(
+      v.union(v.literal("bouldering"), v.literal("rope"), v.literal("both"))
+    ),
   })
     .index("by_city_state", ["state", "city"])
     .searchIndex("search_name", { searchField: "name" }),
