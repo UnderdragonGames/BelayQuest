@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   View,
   Text,
@@ -15,20 +15,10 @@ import { useConvexAuth } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { router } from "expo-router";
 import { LandingPage } from "./LandingPage";
+import { PhoneInput } from "./PhoneInput";
+import { COLORS } from "@/lib/theme";
 
 type AuthStep = "phone" | "code";
-
-/** Strip to digits only */
-function digitsOnly(s: string): string {
-  return s.replace(/\D/g, "");
-}
-
-/** Format 10-digit US number as (555) 123-4567 */
-function formatPhone(digits: string): string {
-  if (digits.length <= 3) return digits.length > 0 ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-}
 
 /** Convert 10 raw digits to E.164 */
 function toE164(digits: string): string {
@@ -69,11 +59,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const handlePhoneChange = useCallback((text: string) => {
-    const raw = digitsOnly(text);
-    setPhoneDigits(raw.slice(0, 10));
-  }, []);
 
   if (isLoading) {
     return (
@@ -136,24 +121,25 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
         {step === "phone" ? (
           <>
-            <TextInput
-              style={styles.input}
-              placeholder="(555) 123-4567"
-              placeholderTextColor="#888"
-              value={formatPhone(phoneDigits)}
-              onChangeText={handlePhoneChange}
-              keyboardType="phone-pad"
-              autoComplete="tel"
+            <PhoneInput
+              value={phoneDigits}
+              onChangeDigits={setPhoneDigits}
               autoFocus
+              style={styles.input}
               inputAccessoryViewID="phone-done"
             />
+            <Text style={styles.smsDisclosure}>
+              By tapping Send Code, you agree to receive a one-time
+              verification code via SMS from BelayQuest. Msg & data rates may
+              apply.
+            </Text>
             <Pressable
               style={[styles.button, submitting && styles.buttonDisabled]}
               onPress={handleSendCode}
               disabled={submitting || phoneDigits.length < 10}
             >
               {submitting ? (
-                <ActivityIndicator color="#1a1a2e" />
+                <ActivityIndicator color={COLORS.bg} />
               ) : (
                 <Text style={styles.buttonText}>Send Code</Text>
               )}
@@ -178,7 +164,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
               disabled={submitting || code.length === 0}
             >
               {submitting ? (
-                <ActivityIndicator color="#1a1a2e" />
+                <ActivityIndicator color={COLORS.bg} />
               ) : (
                 <Text style={styles.buttonText}>Verify</Text>
               )}
@@ -243,7 +229,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.bg,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
@@ -251,7 +237,7 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "#16213e",
+    backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 32,
     alignItems: "center",
@@ -259,12 +245,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#f4a261",
+    color: COLORS.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "#eaeaea",
+    color: COLORS.text,
     textAlign: "center",
     marginBottom: 24,
     opacity: 0.8,
@@ -272,11 +258,11 @@ const styles = StyleSheet.create({
   input: {
     width: "100%",
     height: 48,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.bg,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#2a2a4a",
-    color: "#eaeaea",
+    borderColor: COLORS.border,
+    color: COLORS.text,
     fontSize: 18,
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -286,7 +272,7 @@ const styles = StyleSheet.create({
   button: {
     width: "100%",
     height: 48,
-    backgroundColor: "#f4a261",
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
@@ -295,7 +281,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: "#1a1a2e",
+    color: COLORS.bg,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -307,12 +293,12 @@ const styles = StyleSheet.create({
   },
   linkButton: {},
   linkText: {
-    color: "#f4a261",
+    color: COLORS.primary,
     fontSize: 14,
     opacity: 0.8,
   },
   error: {
-    color: "#e76f51",
+    color: COLORS.danger,
     fontSize: 13,
     marginTop: 16,
     textAlign: "center",
@@ -320,9 +306,9 @@ const styles = StyleSheet.create({
   accessoryBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#16213e",
+    backgroundColor: COLORS.card,
     borderTopWidth: 1,
-    borderTopColor: "#2a2a4a",
+    borderTopColor: COLORS.border,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
@@ -331,7 +317,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   doneButtonText: {
-    color: "#f4a261",
+    color: COLORS.primary,
     fontSize: 16,
     fontWeight: "600",
   },
@@ -342,19 +328,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   legalText: {
-    color: "#aaa",
+    color: COLORS.muted,
     fontSize: 12,
   },
   legalSeparator: {
-    color: "#aaa",
+    color: COLORS.muted,
     fontSize: 12,
+  },
+  smsDisclosure: {
+    color: COLORS.muted,
+    fontSize: 11,
+    textAlign: "center",
+    marginBottom: 16,
+    lineHeight: 16,
   },
   appStoreButtons: {
     alignItems: "center",
     gap: 12,
   },
   comingSoon: {
-    color: "#888",
+    color: COLORS.muted,
     fontSize: 14,
     fontStyle: "italic",
   },

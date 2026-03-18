@@ -1,5 +1,5 @@
-import { useRef, useCallback, useEffect, useState } from "react";
-import { View, Image, StyleSheet, Pressable, Text } from "react-native";
+import { useRef, useCallback, useEffect, useState, useMemo } from "react";
+import { View, Image, StyleSheet, Pressable, Text, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 
 // Toggle with ?layout=1 in URL
@@ -9,12 +9,12 @@ const DEBUG_LAYOUT =
 
 // Full-width parallax scene layers (back to front)
 const SCENE_LAYERS = [
-  { source: require("../assets/images/homepage/0BG.png"), speed: 0.015 },
-  { source: require("../assets/images/homepage/1CloudsBack.png"), speed: 0.045 },
-  { source: require("../assets/images/homepage/2Castles.png"), speed: 0.08 },
-  { source: require("../assets/images/homepage/3CloudsMid.png"), speed: 0.11 },
-  { source: require("../assets/images/homepage/4MinorIslands.png"), speed: 0.14 },
-  { source: require("../assets/images/homepage/5CloudsFor.png"), speed: 0.18 },
+  { source: require("../assets/images/homepage/0BG.webp"), speed: 0.015 },
+  { source: require("../assets/images/homepage/1CloudsBack.webp"), speed: 0.045 },
+  { source: require("../assets/images/homepage/2Castles.webp"), speed: 0.08 },
+  { source: require("../assets/images/homepage/3CloudsMid.webp"), speed: 0.11 },
+  { source: require("../assets/images/homepage/4MinorIslands.webp"), speed: 0.14 },
+  { source: require("../assets/images/homepage/5CloudsFor.webp"), speed: 0.18 },
 ];
 
 const CLIMBER_SPEED = 0.22;
@@ -347,7 +347,21 @@ function getResponsiveLayout(): LayoutItem[] {
   });
 }
 
+// All images to preload before showing the page
+const ALL_IMAGES = [
+  require("../assets/images/homepage/00Parchment.webp"),
+  require("../assets/images/homepage/6Climber.webp"),
+  require("../assets/images/homepage/TitleLogo.webp"),
+  require("../assets/images/homepage/AppStore.webp"),
+  require("../assets/images/homepage/GooglePlay.webp"),
+  ...SCENE_LAYERS.map((l) => l.source),
+];
+
+const TOTAL_IMAGES = ALL_IMAGES.length;
+
 export function LandingPage() {
+  const [loadedCount, setLoadedCount] = useState(0);
+  const loaded = loadedCount >= TOTAL_IMAGES;
   const [layoutItems, setLayoutItems] = useState(getResponsiveLayout);
   const layerRefs = useRef<(View | null)[]>([]);
   const climberRef = useRef<View>(null);
@@ -357,6 +371,19 @@ export function LandingPage() {
   const targetY = useRef(0);
   const currentX = useRef(0);
   const currentY = useRef(0);
+
+  // Preload all images, tracking progress
+  useEffect(() => {
+    let cancelled = false;
+    ALL_IMAGES.forEach((src) => {
+      const uri = typeof src === "number" ? Image.resolveAssetSource(src).uri : (src as any).uri ?? src;
+      const img = new window.Image();
+      img.onload = () => { if (!cancelled) setLoadedCount((c) => c + 1); };
+      img.onerror = () => { if (!cancelled) setLoadedCount((c) => c + 1); };
+      img.src = uri;
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Recalculate layout on resize (orientation change, etc.)
   useEffect(() => {
@@ -464,11 +491,30 @@ export function LandingPage() {
   const legalLayout = getLayout("legal");
   const sceneLayout = getLayout("scene");
 
+  if (!loaded) {
+    const progress = TOTAL_IMAGES > 0 ? loadedCount / TOTAL_IMAGES : 0;
+    const percent = Math.round(progress * 100);
+    const barWidth = 240;
+    const filledWidth = Math.round(barWidth * progress);
+
+    return (
+      <View style={styles.loadingScreen}>
+        <Text style={styles.loadingTitle}>BELAY QUEST</Text>
+        <Text style={styles.loadingSubtitle}>Find your climbing party</Text>
+        {/* Loading bar container */}
+        <View style={styles.loadingBarOuter}>
+          <View style={[styles.loadingBarInner, { width: filledWidth }]} />
+        </View>
+        <Text style={styles.loadingPercent}>{percent}%</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Parchment frame — fixed, no parallax */}
       <Image
-        source={require("../assets/images/homepage/00Parchment.png")}
+        source={require("../assets/images/homepage/00Parchment.webp")}
         style={styles.parchment}
         resizeMode="cover"
       />
@@ -518,7 +564,7 @@ export function LandingPage() {
           } as any}
         >
           <Image
-            source={require("../assets/images/homepage/6Climber.png")}
+            source={require("../assets/images/homepage/6Climber.webp")}
             style={{ width: `${climberLayout.w}vw`, height: `${climberLayout.h}vh` } as any}
             resizeMode="contain"
           />
@@ -535,7 +581,7 @@ export function LandingPage() {
         } as any}
       >
         <Image
-          source={require("../assets/images/homepage/TitleLogo.png")}
+          source={require("../assets/images/homepage/TitleLogo.webp")}
           style={{ width: `${logoLayout.w}vw`, height: `${logoLayout.h}vh` } as any}
           resizeMode="contain"
         />
@@ -558,14 +604,14 @@ export function LandingPage() {
         <View style={styles.badgeRow}>
           <Pressable style={styles.badge}>
             <Image
-              source={require("../assets/images/homepage/AppStore.png")}
+              source={require("../assets/images/homepage/AppStore.webp")}
               style={styles.badgeImage}
               resizeMode="contain"
             />
           </Pressable>
           <Pressable style={styles.badge}>
             <Image
-              source={require("../assets/images/homepage/GooglePlay.png")}
+              source={require("../assets/images/homepage/GooglePlay.webp")}
               style={styles.badgeImage}
               resizeMode="contain"
             />
@@ -605,6 +651,45 @@ export function LandingPage() {
 }
 
 const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: "#2a1f14",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingTitle: {
+    fontFamily: "VT323",
+    fontSize: 48,
+    color: "#f4a261",
+    letterSpacing: 6,
+    marginBottom: 4,
+  },
+  loadingSubtitle: {
+    fontFamily: "VT323",
+    fontSize: 20,
+    color: "#666680",
+    letterSpacing: 2,
+    marginBottom: 32,
+  },
+  loadingBarOuter: {
+    width: 240,
+    height: 20,
+    backgroundColor: "#3b2a1a",
+    borderWidth: 2,
+    borderColor: "#d4a44a",
+    padding: 2,
+  },
+  loadingBarInner: {
+    height: "100%",
+    backgroundColor: "#f4a261",
+  },
+  loadingPercent: {
+    fontFamily: "VT323",
+    fontSize: 18,
+    color: "#666680",
+    marginTop: 8,
+    letterSpacing: 2,
+  },
   container: {
     flex: 1,
     backgroundColor: "#2a1f14",
