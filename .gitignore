@@ -46,6 +46,5 @@ test-results/
 playwright-report/
 blob-report/
 
-# Claude Code agent memory (local machine state)
-.claude/projects/
-.claude/worktrees/
+# Claude Code workspace (local machine state)
+.claude/
