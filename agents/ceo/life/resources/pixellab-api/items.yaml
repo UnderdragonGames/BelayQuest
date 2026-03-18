@@ -1,0 +1,39 @@
+- id: pixellab-001
+  type: fact
+  content: "Pixel Lab API provides 6 generation endpoints: Bitforge (style-consistent), Pixflux (text-to-art), Rotate, Animate-with-skeleton, Animate-with-text, Inpaint, plus Balance check"
+  source: api.pixellab.ai/v1/docs
+  confidence: high
+  created: "2026-03-11"
+  status: active
+
+- id: pixellab-002
+  type: fact
+  content: "Bitforge is the best endpoint for BelayQuest avatars: supports style reference images for consistency, low top-down view, transparent backgrounds, 8 directions, color palettes, max 200x200"
+  source: api.pixellab.ai/v1/docs
+  confidence: high
+  created: "2026-03-11"
+  status: active
+
+- id: pixellab-003
+  type: fact
+  content: "Pixel Lab costs ~$0.007-$0.013 per generation. Auth via Bearer token with PIXELLAB_API_KEY env var"
+  source: api.pixellab.ai/v1/docs
+  confidence: high
+  created: "2026-03-11"
+  status: active
+
+- id: pixellab-004
+  type: decision
+  content: "Avatar plan for UNDA-31: 48x48 generation, 3x scale to 144px, Convex server action wraps Pixel Lab, new onboarding screen between Name and Grades, replace color-swatch picker"
+  source: "CEO analysis of UNDA-31"
+  confidence: high
+  created: "2026-03-11"
+  status: active
+
+- id: pixellab-005
+  type: fact
+  content: "UNDA-31 blocked on board answers: (1) style reference image source, (2) regen budget per user, (3) single portrait vs multi-angle scope, (4) replace vs extend avatar picker"
+  source: "UNDA-31 comment fcea2b51"
+  confidence: high
+  created: "2026-03-11"
+  status: active
