@@ -1,12 +1,12 @@
 import { ScrollView, Text, View, StyleSheet } from "react-native";
 
 const COLORS = {
-  bg: "#1a1a2e",
-  card: "#16213e",
-  text: "#eaeaea",
-  heading: "#f4a261",
-  muted: "#aaa",
-  border: "#2a2a4a",
+  bg: "#2a1f14",
+  card: "#3b2a1a",
+  text: "#f5e6c8",
+  heading: "#d4a44a",
+  muted: "#a89070",
+  border: "#5a4230",
 };
 
 function Section({ title, children }: { title: string; children: string }) {
@@ -40,13 +40,21 @@ export default function PrivacyPolicy() {
           `• Authenticate your identity via one-time SMS codes\n` +
           `• Display your climbing progress, XP, and character stats\n` +
           `• Enable social features like Raids and the Quest Board\n` +
+          `• Send session invite SMS messages to phone numbers you provide when inviting others to climb\n` +
           `• Improve the app experience`}
+      </Section>
+
+      <Section title="SMS Messages">
+        {`BelayQuest sends SMS messages in two contexts:\n\n` +
+          `• Verification codes — sent to your phone number when you log in. These are one-time transactional messages initiated by you.\n` +
+          `• Session invites — when you invite someone to a climbing session by their phone number, we send them a single SMS on your behalf identifying you as the sender.\n\n` +
+          `Message and data rates may apply. You can reply STOP to any BelayQuest SMS to opt out of future messages. We honor opt-out requests within 10 business days and retain opt-out records for 10 years as required by law.`}
       </Section>
 
       <Section title="Third-Party Services">
         {`We use the following third-party services:\n\n` +
           `• Convex — cloud database and backend (data processor)\n` +
-          `• Twilio — SMS delivery for phone verification\n\n` +
+          `• Twilio — SMS delivery for phone verification and session invites\n\n` +
           `These services process your data only as needed to provide their functionality and are bound by their own privacy policies.`}
       </Section>
 

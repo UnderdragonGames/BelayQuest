@@ -1,19 +1,29 @@
 import { ScrollView, Text, View, StyleSheet } from "react-native";
 
 const COLORS = {
-  bg: "#1a1a2e",
-  card: "#16213e",
-  text: "#eaeaea",
-  heading: "#f4a261",
-  muted: "#aaa",
-  border: "#2a2a4a",
+  bg: "#2a1f14",
+  card: "#3b2a1a",
+  text: "#f5e6c8",
+  heading: "#d4a44a",
+  muted: "#a89070",
+  border: "#5a4230",
 };
 
-function Section({ title, children }: { title: string; children: string }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.body}>{children}</Text>
+      {typeof children === "string" ? (
+        <Text style={styles.body}>{children}</Text>
+      ) : (
+        children
+      )}
     </View>
   );
 }
@@ -64,6 +74,21 @@ export default function TermsOfService() {
         {`To the maximum extent permitted by law, BelayQuest and its creators shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the app.`}
       </Section>
 
+      <Section title="SMS Messaging Terms">
+        <Text style={styles.body}>
+          BelayQuest sends SMS messages for account verification and session
+          invites.{"\n\n"}
+          Program name: BelayQuest{"\n"}
+          Message frequency varies based on your usage.{"\n"}
+          Msg & data rates may apply.{"\n\n"}
+          Text <Text style={styles.bold}>STOP</Text> to any BelayQuest message
+          to opt out of future messages. You will receive a single confirmation
+          and no further texts.{"\n\n"}
+          Text <Text style={styles.bold}>HELP</Text> for assistance or visit
+          https://belay.quest for support.
+        </Text>
+      </Section>
+
       <Section title="Changes to Terms">
         {`We may update these terms from time to time. Continued use of the app after changes constitutes acceptance of the updated terms.`}
       </Section>
@@ -108,5 +133,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text,
     lineHeight: 22,
+  },
+  bold: {
+    fontWeight: "bold",
   },
 });
