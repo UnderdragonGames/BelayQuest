@@ -423,10 +423,11 @@ type AchievementStats = {
   maxGradeBoulder?: string;
   maxGradeRoute?: string;
   totalSends: number;
-  totalTapeEarned: number;
   hostedRaids: number;
   attendedSessions: number;
+  attendedRaids: number;
   uniqueGyms: number;
+  uniquePartners: number;
 };
 
 export const ACHIEVEMENT_DEFS: Record<
@@ -434,6 +435,8 @@ export const ACHIEVEMENT_DEFS: Record<
   {
     title: string;
     description: string;
+    icon: string; // filename stem from assets/images/icons/
+    xpBonus: number; // XP awarded when unlocked
     itemsGranted: string[];
     check: (s: AchievementStats) => boolean;
   }
@@ -442,12 +445,16 @@ export const ACHIEVEMENT_DEFS: Record<
   first_boulder: {
     title: "First Ascent",
     description: "Log your first boulder send",
+    icon: "boulder",
+    xpBonus: 50,
     itemsGranted: ["chalk"],
     check: (s) => !!s.maxGradeBoulder,
   },
   grade_v4: {
     title: "V4 Vanquished",
     description: "Send a V4 or harder",
+    icon: "star",
+    xpBonus: 100,
     itemsGranted: ["chalk_bag"],
     check: (s) =>
       !!s.maxGradeBoulder && gradeIndex(s.maxGradeBoulder) >= gradeIndex("V4"),
@@ -455,119 +462,143 @@ export const ACHIEVEMENT_DEFS: Record<
   grade_v7: {
     title: "Seven Deadly Sends",
     description: "Send a V7 or harder",
+    icon: "crown",
+    xpBonus: 250,
     itemsGranted: ["liquid_chalk"],
     check: (s) =>
       !!s.maxGradeBoulder && gradeIndex(s.maxGradeBoulder) >= gradeIndex("V7"),
-  },
-  grade_v10: {
-    title: "Decachron",
-    description: "Send a V10 or harder",
-    itemsGranted: ["liquid_chalk", "brush"],
-    check: (s) =>
-      !!s.maxGradeBoulder &&
-      gradeIndex(s.maxGradeBoulder) >= gradeIndex("V10"),
   },
 
   // ─── Route grade milestones ───────────────────────────────
   first_route: {
     title: "On Rope",
     description: "Log your first route send",
+    icon: "rope",
+    xpBonus: 50,
     itemsGranted: ["chalk"],
     check: (s) => !!s.maxGradeRoute,
-  },
-  route_5_10: {
-    title: "5.10 Club",
-    description: "Send a 5.10 or harder",
-    itemsGranted: ["carabiner"],
-    check: (s) =>
-      !!s.maxGradeRoute &&
-      gradeIndex(s.maxGradeRoute) >= gradeIndex("5.10"),
   },
   route_5_12: {
     title: "Twelve Pack",
     description: "Send a 5.12 or harder",
+    icon: "cam",
+    xpBonus: 250,
     itemsGranted: ["quickdraw"],
     check: (s) =>
       !!s.maxGradeRoute &&
       gradeIndex(s.maxGradeRoute) >= gradeIndex("5.12"),
   },
 
-  // ─── Total sends volume ───────────────────────────────────
+  // ─── Volume (minimal — entry points only) ─────────────────
   sends_10: {
     title: "Just Getting Started",
     description: "Log 10 total sends",
+    icon: "checkmark",
+    xpBonus: 50,
     itemsGranted: ["chalk"],
     check: (s) => s.totalSends >= 10,
   },
   sends_50: {
     title: "Sending Machine",
     description: "Log 50 total sends",
+    icon: "scroll",
+    xpBonus: 150,
     itemsGranted: ["chalk_bag"],
     check: (s) => s.totalSends >= 50,
   },
-  sends_100: {
-    title: "Centurian Climber",
-    description: "Log 100 total sends",
-    itemsGranted: ["carabiner"],
-    check: (s) => s.totalSends >= 100,
-  },
-  sends_500: {
-    title: "Sending Legend",
-    description: "Log 500 total sends",
-    itemsGranted: ["quickdraw", "carabiner"],
-    check: (s) => s.totalSends >= 500,
-  },
 
-  // ─── Tape (persistence) ───────────────────────────────────
-  tape_10: {
-    title: "Tape Collector",
-    description: "Earn 10 pieces of tape from projecting",
+  // ─── Social: joining group sessions ───────────────────────
+  join_first_raid: {
+    title: "Party Crasher",
+    description: "Join your first group climbing session",
+    icon: "swords",
+    xpBonus: 75,
     itemsGranted: ["chalk"],
-    check: (s) => s.totalTapeEarned >= 10,
+    check: (s) => s.attendedRaids >= 1,
   },
-  tape_50: {
-    title: "Tape Hoarder",
-    description: "Earn 50 pieces of tape",
+  attend_5_raids: {
+    title: "Raid Regular",
+    description: "Attend 5 group climbing sessions",
+    icon: "handshake",
+    xpBonus: 200,
     itemsGranted: ["carabiner"],
-    check: (s) => s.totalTapeEarned >= 50,
+    check: (s) => s.attendedRaids >= 5,
+  },
+  attend_20_raids: {
+    title: "Raid Veteran",
+    description: "Attend 20 group climbing sessions",
+    icon: "shield",
+    xpBonus: 500,
+    itemsGranted: ["quickdraw", "carabiner"],
+    check: (s) => s.attendedRaids >= 20,
   },
 
-  // ─── Social ───────────────────────────────────────────────
+  // ─── Social: hosting ──────────────────────────────────────
   host_1_raid: {
     title: "Party Starter",
-    description: "Host your first raid",
+    description: "Host your first group climbing session",
+    icon: "flag",
+    xpBonus: 75,
     itemsGranted: ["chalk"],
     check: (s) => s.hostedRaids >= 1,
   },
   host_5_raids: {
     title: "Raid Commander",
-    description: "Host 5 raids",
+    description: "Host 5 group climbing sessions",
+    icon: "helmet",
+    xpBonus: 200,
     itemsGranted: ["quickdraw"],
     check: (s) => s.hostedRaids >= 5,
   },
   host_10_raids: {
     title: "Warlord",
-    description: "Host 10 raids",
+    description: "Host 10 group climbing sessions",
+    icon: "crown",
+    xpBonus: 400,
     itemsGranted: ["quickdraw", "carabiner"],
     check: (s) => s.hostedRaids >= 10,
+  },
+
+  // ─── Social: unique climbing partners ─────────────────────
+  partners_3: {
+    title: "Better Together",
+    description: "Climb with 3 different partners",
+    icon: "chat",
+    xpBonus: 100,
+    itemsGranted: ["chalk"],
+    check: (s) => s.uniquePartners >= 3,
+  },
+  partners_10: {
+    title: "Social Butterfly",
+    description: "Climb with 10 different partners",
+    icon: "keys",
+    xpBonus: 300,
+    itemsGranted: ["carabiner"],
+    check: (s) => s.uniquePartners >= 10,
   },
 
   // ─── Explorer ─────────────────────────────────────────────
   gyms_3: {
     title: "Gym Hopper",
     description: "Climb at 3 different gyms",
+    icon: "compass",
+    xpBonus: 100,
     itemsGranted: ["brush"],
     check: (s) => s.uniqueGyms >= 3,
   },
   gyms_5: {
     title: "Vagabond Climber",
     description: "Climb at 5 different gyms",
+    icon: "footprints",
+    xpBonus: 200,
     itemsGranted: ["carabiner"],
     check: (s) => s.uniqueGyms >= 5,
   },
   gyms_10: {
     title: "True Explorer",
     description: "Climb at 10 different gyms",
+    icon: "signpost",
+    xpBonus: 400,
     itemsGranted: ["quickdraw", "brush"],
     check: (s) => s.uniqueGyms >= 10,
   },
@@ -576,12 +607,16 @@ export const ACHIEVEMENT_DEFS: Record<
   sessions_5: {
     title: "Regular",
     description: "Complete 5 climbing sessions",
+    icon: "hourglass",
+    xpBonus: 100,
     itemsGranted: ["chalk"],
     check: (s) => s.attendedSessions >= 5,
   },
   sessions_20: {
     title: "Devoted Climber",
     description: "Complete 20 climbing sessions",
+    icon: "helmet",
+    xpBonus: 300,
     itemsGranted: ["chalk_bag"],
     check: (s) => s.attendedSessions >= 20,
   },
@@ -597,38 +632,64 @@ export const checkAchievements = internalMutation({
     const user = await ctx.db.get(userId);
     if (!user) return;
 
-    // Gather stats
-    const [sends, tapeEvents, sessionMemberships, hostedSessions] =
-      await Promise.all([
-        ctx.db
-          .query("sends")
-          .withIndex("by_user", (q) => q.eq("userId", userId))
-          .collect(),
-        ctx.db
-          .query("events")
-          .withIndex("by_user", (q) => q.eq("userId", userId))
-          .collect(),
+    // Gather base stats
+    const [sends, sessionMemberships, hostedSessions] = await Promise.all([
+      ctx.db
+        .query("sends")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("sessionMembers")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect(),
+      ctx.db
+        .query("sessions")
+        .withIndex("by_creator", (q) => q.eq("creatorId", userId))
+        .collect(),
+    ]);
+
+    // Determine attended sessions and compute social stats
+    const attendedMemberships = sessionMemberships.filter(
+      (m) => m.status === "attended" || m.status === "accepted"
+    );
+    const attendedSessionDetails = (
+      await Promise.all(attendedMemberships.map((m) => ctx.db.get(m.sessionId)))
+    ).filter((s): s is NonNullable<typeof s> => s !== null);
+
+    const attendedRaids = attendedSessionDetails.filter(
+      (s) => s.type === "raid"
+    ).length;
+
+    // Unique partners: all users co-present in sessions the user attended
+    const partnerIdSet = new Set<string>();
+    const partnerMemberLists = await Promise.all(
+      attendedSessionDetails.map((session) =>
         ctx.db
           .query("sessionMembers")
-          .withIndex("by_user", (q) => q.eq("userId", userId))
-          .collect(),
-        ctx.db
-          .query("sessions")
-          .withIndex("by_creator", (q) => q.eq("creatorId", userId))
-          .collect(),
-      ]);
+          .withIndex("by_session", (q) => q.eq("sessionId", session._id))
+          .collect()
+      )
+    );
+    for (const members of partnerMemberLists) {
+      for (const m of members) {
+        if (
+          m.userId.toString() !== userId.toString() &&
+          (m.status === "attended" || m.status === "accepted")
+        ) {
+          partnerIdSet.add(m.userId.toString());
+        }
+      }
+    }
 
     const stats: AchievementStats = {
       maxGradeBoulder: user.maxGradeBoulder,
       maxGradeRoute: user.maxGradeRoute,
       totalSends: sends.filter((s) => s.type === "send").length,
-      totalTapeEarned: tapeEvents.filter((e) => e.type === "tape_earned")
-        .length,
       hostedRaids: hostedSessions.filter((s) => s.type === "raid").length,
-      attendedSessions: sessionMemberships.filter(
-        (m) => m.status === "attended"
-      ).length,
+      attendedSessions: attendedMemberships.length,
+      attendedRaids,
       uniqueGyms: new Set(sends.map((s) => s.gymId.toString())).size,
+      uniquePartners: partnerIdSet.size,
     };
 
     // Get already-earned achievements to skip duplicates
@@ -639,6 +700,8 @@ export const checkAchievements = internalMutation({
     const earned = new Set(existing.map((a) => a.type));
 
     const now = Date.now();
+    let totalXpGained = 0;
+
     for (const [type, def] of Object.entries(ACHIEVEMENT_DEFS)) {
       if (earned.has(type)) continue;
       if (!def.check(stats)) continue;
@@ -662,13 +725,34 @@ export const checkAchievements = internalMutation({
         });
       }
 
+      // Grant XP bonus
+      if (def.xpBonus > 0) {
+        await ctx.db.insert("xpLedger", {
+          userId,
+          amount: def.xpBonus,
+          source: "achievement",
+          sourceId: achievementId,
+          createdAt: now,
+        });
+        totalXpGained += def.xpBonus;
+      }
+
       // Record event for the timeline
       await ctx.db.insert("events", {
         userId,
         type: "achievement_unlocked",
         metadata: { achievementType: type, title: def.title },
-        xpAwarded: 0,
+        xpAwarded: def.xpBonus,
         createdAt: now,
+      });
+    }
+
+    // Apply accumulated XP from achievements in a single patch
+    if (totalXpGained > 0) {
+      const newTotalXp = (user.totalXp ?? 0) + totalXpGained;
+      await ctx.db.patch(userId, {
+        totalXp: newTotalXp,
+        level: levelFromXp(newTotalXp),
       });
     }
   },
@@ -694,6 +778,8 @@ export const myAchievements = query({
       type: a.type,
       title: ACHIEVEMENT_DEFS[a.type]?.title ?? a.type,
       description: ACHIEVEMENT_DEFS[a.type]?.description ?? "",
+      icon: ACHIEVEMENT_DEFS[a.type]?.icon ?? "star",
+      xpBonus: ACHIEVEMENT_DEFS[a.type]?.xpBonus ?? 0,
       itemsGranted: a.itemsGranted ?? [],
       earnedAt: a.earnedAt,
     }));
