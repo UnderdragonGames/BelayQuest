@@ -6,21 +6,16 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { t } from "@/lib/copy/en";
-
-const COLORS = {
-  bg: "#1a1a2e",
-  primary: "#f4a261",
-  text: "#eaeaea",
-  muted: "#666680",
-  card: "#16213e",
-  border: "#2a2a4a",
-  danger: "#e76f51",
-  success: "#2a9d8f",
-};
+import { COLORS } from "@/lib/theme";
+import { PixelIcon } from "@/components/PixelIcon";
+import { ParchmentPanel } from "@/components/ParchmentPanel";
+import { SectionHeader } from "@/components/SectionHeader";
+import { StoneButton } from "@/components/StoneButton";
 
 function formatSessionTime(timestamp: number): string {
   const date = new Date(timestamp);
@@ -49,10 +44,10 @@ function formatSessionTime(timestamp: number): string {
 }
 
 export default function QuestsScreen() {
+  const { top: topInset, bottom: bottomInset } = useSafeAreaInsets();
   const router = useRouter();
   const upcoming = useQuery(api.sessions.myUpcoming);
   const quickRaidMutation = useMutation(api.sessions.quickRaid);
-
   const respondToInvite = useMutation(api.sessions.respondToInvite);
 
   const handleQuickRaid = async () => {
@@ -62,6 +57,7 @@ export default function QuestsScreen() {
         pathname: "/create/raid",
         params: {
           quickRaidSessionId: result.sessionId,
+          quickRaidShortCode: result.shortCode,
           quickRaidGymName: result.gymName,
           quickRaidScheduledAt: String(result.scheduledAt),
           quickRaidGuildName: result.guildName,
@@ -98,20 +94,9 @@ export default function QuestsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: topInset + 8 }]}>
         <Text style={styles.title}>{t("app.name")}</Text>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.quickRaidButton} onPress={handleQuickRaid}>
-            <Text style={styles.quickRaidIcon}>⚡</Text>
-            <Text style={styles.quickRaidText}>{t("quickraid.button")}</Text>
-          </Pressable>
-          <Pressable
-            style={styles.createButton}
-            onPress={() => router.push("/create/raid")}
-          >
-            <Text style={styles.createButtonText}>+</Text>
-          </Pressable>
-        </View>
       </View>
 
       {upcoming === undefined ? (
@@ -120,22 +105,17 @@ export default function QuestsScreen() {
         </View>
       ) : !hasUpcoming ? (
         <View style={styles.emptyState}>
+          <PixelIcon name="scroll" size={64} style={styles.emptyIcon} />
           <Text style={styles.emptyText}>{t("empty.quests")}</Text>
           <Text style={styles.emptySubtext}>{t("empty.quests.cta")}</Text>
-          <Pressable
-            style={styles.ctaButton}
-            onPress={() => router.push("/create/raid")}
-          >
-            <Text style={styles.ctaButtonText}>
-              {t("action.create_raid")}
-            </Text>
-          </Pressable>
         </View>
       ) : (
         <ScrollView
           style={styles.sessionList}
           contentContainerStyle={styles.sessionListContent}
         >
+          <SectionHeader title="Upcoming Raids" />
+
           {upcoming.map((session) => {
             const otherMembers = session.members.filter(
               (m) => !m.isCurrentUser
@@ -147,7 +127,6 @@ export default function QuestsScreen() {
             return (
               <Pressable
                 key={session._id}
-                style={styles.sessionCard}
                 onPress={() =>
                   router.push({
                     pathname: "/session/[id]",
@@ -155,92 +134,89 @@ export default function QuestsScreen() {
                   })
                 }
               >
-                <View style={styles.sessionHeader}>
-                  <Text style={styles.sessionTypeIcon}>⚔</Text>
-                  <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionGym}>{session.gymName}</Text>
-                    <Text style={styles.sessionTime}>
-                      {formatSessionTime(session.scheduledAt)}
-                    </Text>
+                <ParchmentPanel style={styles.cardPanel}>
+                  <View style={styles.sessionHeader}>
+                    <PixelIcon name="swords" size={28} style={styles.sessionTypeIcon} />
+                    <View style={styles.sessionInfo}>
+                      <Text style={styles.sessionGym}>{session.gymName}</Text>
+                      <Text style={styles.sessionTime}>
+                        {formatSessionTime(session.scheduledAt)}
+                      </Text>
+                    </View>
+                    <View style={styles.sessionStatusBadge}>
+                      <Text style={styles.sessionStatusText}>
+                        {t(`session.status.${session.status}` as any)}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.sessionStatusBadge}>
-                    <Text style={styles.sessionStatusText}>
-                      {t(
-                        `session.status.${session.status}` as any
+
+                  <View style={styles.sessionMembers}>
+                    <Text style={styles.memberCount}>
+                      {t("upcoming.you_plus", { count: otherMembers.length })}
+                    </Text>
+                    <View style={styles.memberNames}>
+                      {otherMembers.slice(0, 4).map((m, idx) => (
+                        <Text key={idx} style={styles.memberNameText}>
+                          {m.nickname ?? m.generatedName}
+                          {idx < Math.min(otherMembers.length, 4) - 1 ? ", " : ""}
+                        </Text>
+                      ))}
+                      {otherMembers.length > 4 && (
+                        <Text style={styles.memberNameText}>
+                          {" "}+{otherMembers.length - 4} more
+                        </Text>
                       )}
-                    </Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.sessionMembers}>
-                  <Text style={styles.memberCount}>
-                    {t("upcoming.you_plus", {
-                      count: otherMembers.length,
-                    })}
-                  </Text>
-                  <View style={styles.memberNames}>
-                    {otherMembers.slice(0, 4).map((m, idx) => (
-                      <Text key={idx} style={styles.memberNameText}>
-                        {m.nickname ?? m.generatedName}
-                        {idx < Math.min(otherMembers.length, 4) - 1
-                          ? ", "
-                          : ""}
-                      </Text>
-                    ))}
-                    {otherMembers.length > 4 && (
-                      <Text style={styles.memberNameText}>
-                        {" "}+{otherMembers.length - 4} more
-                      </Text>
-                    )}
-                  </View>
-                </View>
+                  {session.note && (
+                    <Text style={styles.sessionNote}>{session.note}</Text>
+                  )}
 
-                {session.note && (
-                  <Text style={styles.sessionNote}>{session.note}</Text>
-                )}
+                  {session.myStatus === "invited" && (
+                    <View style={styles.inviteActions}>
+                      <View style={styles.inviteButtonWrap}>
+                        <StoneButton
+                          label={t("upcoming.accept")}
+                          onPress={() => handleAccept(session._id)}
+                        />
+                      </View>
+                      <View style={styles.inviteButtonWrap}>
+                        <StoneButton
+                          label={t("upcoming.decline")}
+                          onPress={() => handleDecline(session._id)}
+                        />
+                      </View>
+                    </View>
+                  )}
 
-                {session.myStatus === "invited" && (
-                  <View style={styles.inviteActions}>
-                    <Pressable
-                      style={styles.acceptButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleAccept(session._id);
-                      }}
-                    >
-                      <Text style={styles.acceptButtonText}>
-                        {t("upcoming.accept")}
+                  {session.myStatus === "accepted" && (
+                    <View style={styles.statusRow}>
+                      <PixelIcon name="checkmark" size={16} />
+                      <Text style={styles.goingBadge}>
+                        {t("upcoming.accepted")}
                       </Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.declineButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDecline(session._id);
-                      }}
-                    >
-                      <Text style={styles.declineButtonText}>
-                        {t("upcoming.decline")}
+                      <Text style={styles.attendeeCount}>
+                        {acceptedCount} going
                       </Text>
-                    </Pressable>
-                  </View>
-                )}
-
-                {session.myStatus === "accepted" && (
-                  <View style={styles.statusRow}>
-                    <Text style={styles.goingBadge}>
-                      {t("upcoming.accepted")}
-                    </Text>
-                    <Text style={styles.attendeeCount}>
-                      {acceptedCount} going
-                    </Text>
-                  </View>
-                )}
+                    </View>
+                  )}
+                </ParchmentPanel>
               </Pressable>
             );
           })}
         </ScrollView>
       )}
+
+      {/* Bottom action bar — thumb-level */}
+      <View style={[styles.bottomActions, { paddingBottom: Math.max(12, bottomInset) }]}>
+        <StoneButton label={t("quickraid.button")} onPress={handleQuickRaid} style={{ flex: 1 }} />
+        <StoneButton
+          label={t("action.create_raid")}
+          onPress={() => router.push("/create/raid")}
+          style={{ flex: 1 }}
+        />
+      </View>
     </View>
   );
 }
@@ -254,52 +230,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  quickRaidButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    gap: 4,
-  },
-  quickRaidIcon: {
-    fontSize: 16,
-  },
-  quickRaidText: {
-    fontSize: 13,
-    fontWeight: "bold",
+    fontFamily: "VT323",
+    fontSize: 28,
     color: COLORS.primary,
   },
-  createButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
+  bottomActions: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.border,
   },
-  createButtonText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: COLORS.bg,
-    marginTop: -2,
+  actionButtonWrap: {
+    flex: 1,
   },
   loadingState: {
     flex: 1,
@@ -311,43 +259,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
+    gap: 12,
+  },
+  emptyIcon: {
+    marginBottom: 8,
+    opacity: 0.6,
   },
   emptyText: {
-    fontSize: 18,
+    fontFamily: "VT323",
+    fontSize: 22,
     color: COLORS.text,
-    marginBottom: 8,
+    textAlign: "center",
   },
   emptySubtext: {
-    fontSize: 14,
+    fontFamily: "VT323",
+    fontSize: 18,
     color: COLORS.muted,
-    marginBottom: 24,
-  },
-  ctaButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  ctaButtonText: {
-    color: COLORS.bg,
-    fontWeight: "bold",
-    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 8,
   },
   // Session list
   sessionList: {
     flex: 1,
   },
   sessionListContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingBottom: 20,
   },
-  sessionCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 14,
-    padding: 16,
+  cardPanel: {
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   sessionHeader: {
     flexDirection: "row",
@@ -355,53 +295,56 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sessionTypeIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    marginRight: 10,
   },
   sessionInfo: {
     flex: 1,
   },
   sessionGym: {
-    fontSize: 17,
-    fontWeight: "bold",
-    color: COLORS.text,
+    fontFamily: "VT323",
+    fontSize: 20,
+    color: COLORS.bg,
   },
   sessionTime: {
-    fontSize: 13,
-    color: COLORS.muted,
-    marginTop: 2,
+    fontFamily: "VT323",
+    fontSize: 16,
+    color: "#6b4e2a",
+    marginTop: 1,
   },
   sessionStatusBadge: {
     backgroundColor: COLORS.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   sessionStatusText: {
-    fontSize: 11,
-    color: COLORS.muted,
-    fontWeight: "600",
+    fontFamily: "VT323",
+    fontSize: 14,
+    color: COLORS.text,
     textTransform: "uppercase",
   },
   sessionMembers: {
     marginBottom: 8,
   },
   memberCount: {
-    fontSize: 13,
-    color: COLORS.muted,
-    marginBottom: 4,
+    fontFamily: "VT323",
+    fontSize: 16,
+    color: "#6b4e2a",
+    marginBottom: 2,
   },
   memberNames: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
   memberNameText: {
-    fontSize: 13,
-    color: COLORS.text,
+    fontFamily: "VT323",
+    fontSize: 16,
+    color: COLORS.bg,
   },
   sessionNote: {
-    fontSize: 13,
-    color: COLORS.muted,
+    fontFamily: "VT323",
+    fontSize: 15,
+    color: "#6b4e2a",
     fontStyle: "italic",
     marginBottom: 8,
   },
@@ -409,46 +352,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     marginTop: 8,
+    justifyContent: "center",
   },
-  acceptButton: {
+  inviteButtonWrap: {
     flex: 1,
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  acceptButtonText: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: COLORS.bg,
-  },
-  declineButton: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  declineButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.muted,
   },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     marginTop: 8,
   },
   goingBadge: {
-    fontSize: 13,
-    fontWeight: "bold",
+    fontFamily: "VT323",
+    fontSize: 17,
     color: COLORS.success,
   },
   attendeeCount: {
-    fontSize: 12,
-    color: COLORS.muted,
+    fontFamily: "VT323",
+    fontSize: 15,
+    color: "#6b4e2a",
   },
 });
