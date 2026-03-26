@@ -7,16 +7,19 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "ios": {
         "simulator": true
       }
     },
     "development-device": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://incredible-eel-124.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://incredible-eel-124.convex.site",
@@ -28,6 +31,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://incredible-eel-124.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://incredible-eel-124.convex.site",
