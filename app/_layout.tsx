@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/react-native";
 import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack, useRouter } from "expo-router";
@@ -11,23 +10,9 @@ import { ConvexReactClient, useConvexAuth, useQuery } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 
-// Initialize Sentry before anything else renders.
-// DSN is a public key — safe to embed in the client bundle.
-// In dev/CI, skip if the DSN is the placeholder string.
-const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
-if (SENTRY_DSN && SENTRY_DSN !== "SENTRY_DSN_PLACEHOLDER") {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    // Send 100% of errors; sample transactions at 20% to stay in free tier
-    tracesSampleRate: 0.2,
-    // Enable native crash reporting on iOS/Android
-    enableNativeCrashHandling: true,
-    // Tag every event with the release so source maps resolve correctly
-    release: process.env.EXPO_PUBLIC_APP_VERSION,
-    // Disable in Expo Go / dev builds to avoid noise
-    enabled: !__DEV__,
-  });
-}
+// TODO: Re-enable Sentry once a real DSN is configured.
+// Removed to debug TestFlight crash — Sentry native module may be
+// causing the root layout to fail to load.
 
 export { ErrorBoundary } from "expo-router";
 
@@ -196,4 +181,4 @@ function RootLayout() {
   );
 }
 
-export default Sentry.wrap(RootLayout);
+export default RootLayout;
