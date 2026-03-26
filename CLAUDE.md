@@ -50,6 +50,28 @@ Example — `PergamentHeader` (61×19, borders: L=29 R=29 T=8 B=10):
 - Font: `VT323` (pixel font, loaded in `app/_layout.tsx`)
 - Palette: dark brown bg, parchment text, gold primary, forest green XP
 
+## Deployment
+
+### EAS Build & Submit
+```sh
+eas build --platform ios --profile production    # full native build
+eas submit --platform ios --profile production   # submit to TestFlight
+```
+
+### OTA Updates (EAS Update)
+JS-only changes can be pushed without a full native rebuild:
+```sh
+eas update --branch production --message "description of changes"
+```
+- Channels: `development`, `preview`, `production` (mapped in `eas.json`)
+- Runtime version policy: `appVersion` — OTA updates only apply to builds with the same `version` in `app.json`
+- Any change that adds/removes native modules requires a full `eas build`
+
+### Sentry
+- Sentry plugin is configured in `app.json` but uses a placeholder DSN (`SENTRY_DSN_PLACEHOLDER`)
+- Source map upload is disabled (`SENTRY_DISABLE_AUTO_UPLOAD=true`) until a real auth token is configured
+- To enable: replace the DSN placeholder in `eas.json` env blocks and add `SENTRY_AUTH_TOKEN`
+
 ## Testing
 
 Tests live in `__tests__/` mirroring the source structure:

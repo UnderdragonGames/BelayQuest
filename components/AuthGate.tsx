@@ -20,9 +20,18 @@ import { COLORS } from "@/lib/theme";
 
 type AuthStep = "phone" | "code";
 
+// Test review phone (E.164) — when set, this phone number uses the "phone-test"
+// provider with a fixed code and no SMS. For App Store / TestFlight reviewers.
+const TEST_REVIEW_PHONE = process.env.EXPO_PUBLIC_TEST_REVIEW_PHONE ?? null;
+
 /** Convert 10 raw digits to E.164 */
 function toE164(digits: string): string {
   return `+1${digits}`;
+}
+
+/** Is this the designated test review phone number? */
+function isTestPhone(e164: string): boolean {
+  return TEST_REVIEW_PHONE !== null && e164 === TEST_REVIEW_PHONE;
 }
 
 function GetTheApp() {
@@ -82,7 +91,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setSubmitting(true);
     try {
       const e164 = toE164(phoneDigits);
-      await signIn("phone", { phone: e164 });
+      const provider = isTestPhone(e164) ? "phone-test" : "phone";
+      await signIn(provider, { phone: e164 });
       setStep("code");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -97,7 +107,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setSubmitting(true);
     try {
       const e164 = toE164(phoneDigits);
-      await signIn("phone", { phone: e164, code });
+      const provider = isTestPhone(e164) ? "phone-test" : "phone";
+      await signIn(provider, { phone: e164, code });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       setError(message);

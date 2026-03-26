@@ -1,6 +1,14 @@
 import { convexAuth } from "@convex-dev/auth/server";
 import { Phone } from "@convex-dev/auth/providers/Phone";
 
+// ── Test review account ──────────────────────────────────────────
+// For App Store / TestFlight reviewers. Set TEST_REVIEW_PHONE in
+// Convex env vars (E.164, e.g. +15550001234). The reviewer signs in
+// with that number using provider "phone-test" and code "000000".
+// No SMS is sent. Client-side AuthGate auto-selects the provider.
+const TEST_REVIEW_PHONE = process.env.TEST_REVIEW_PHONE;
+const TEST_REVIEW_CODE = "000000";
+
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     Phone({
@@ -51,6 +59,26 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         }
 
         console.log(`[OTP] SMS sent successfully to ${phone}`);
+      },
+    }),
+    // Test provider — fixed code, no SMS. Only usable with TEST_REVIEW_PHONE.
+    Phone({
+      id: "phone-test",
+      generateVerificationToken: async () => TEST_REVIEW_CODE,
+      sendVerificationRequest: async ({ identifier: phone }) => {
+        console.log(`[OTP] Test login for ${phone} — code is ${TEST_REVIEW_CODE}`);
+      },
+      authorize: async (params, account) => {
+        // Only allow the designated test phone number
+        if (!TEST_REVIEW_PHONE) {
+          throw new Error("Test login is not configured");
+        }
+        if (params.phone !== TEST_REVIEW_PHONE) {
+          throw new Error("Test login is only available for the review account");
+        }
+        if (account.providerAccountId !== params.phone) {
+          throw new Error("Phone mismatch");
+        }
       },
     }),
   ],
