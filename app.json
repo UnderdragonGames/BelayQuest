@@ -61,14 +61,6 @@
         {
           "contactsPermission": "BelayQuest uses your contacts to help you invite climbing partners."
         }
-      ],
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "belay-quest",
-          "organization": "belayquest"
-        }
       ]
     ],
     "runtimeVersion": {

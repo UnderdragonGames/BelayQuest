@@ -2,9 +2,10 @@ import { useRef, useCallback, useEffect, useState, useMemo } from "react";
 import { View, Image, StyleSheet, Pressable, Text, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 
-// Toggle with ?layout=1 in URL
+// Toggle with ?layout=1 in URL (web only)
 const DEBUG_LAYOUT =
   typeof window !== "undefined" &&
+  typeof window.location !== "undefined" &&
   new URLSearchParams(window.location.search).has("layout");
 
 // Full-width parallax scene layers (back to front)
