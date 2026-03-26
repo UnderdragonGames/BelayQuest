@@ -23,7 +23,8 @@
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://incredible-eel-124.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://incredible-eel-124.convex.site",
-        "EXPO_PUBLIC_SENTRY_DSN": "SENTRY_DSN_PLACEHOLDER"
+        "EXPO_PUBLIC_SENTRY_DSN": "SENTRY_DSN_PLACEHOLDER",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -35,7 +36,8 @@
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://incredible-eel-124.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://incredible-eel-124.convex.site",
-        "EXPO_PUBLIC_SENTRY_DSN": "SENTRY_DSN_PLACEHOLDER"
+        "EXPO_PUBLIC_SENTRY_DSN": "SENTRY_DSN_PLACEHOLDER",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "resourceClass": "m-medium"
